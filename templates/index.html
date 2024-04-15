@@ -1,24 +1,151 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>IlliniProf</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IlliniProf</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #fff; /* Fallback color if gradients are not supported */
+        background-image: linear-gradient(to bottom right, #007bff, #9c27b0); /* Gradient from blue to purple */
+        margin: 0;
+        padding: 0;
+    }
+    .container {
+        max-width: 800px;
+        margin: 50px auto;
+        background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent white background for content */
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+    }
+    .navbar {
+        background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white background for navbar */
+        padding: 10px 0;
+        margin-bottom: 20px;
+        border-radius: 8px;
+    }
+    .navbar ul {
+        list-style-type: none;
+        padding: 0;
+        text-align: center;
+    }
+    .navbar ul li {
+        display: inline;
+        margin-right: 20px;
+    }
+    .navbar ul li a {
+        color: #333;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .navbar ul li a:hover {
+        text-decoration: underline;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    input[type="text"], input[type="submit"] {
+        width: 100%;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+    }
+    input[type="submit"] {
+        background-color: #007bff;
+        color: #fff;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+    input[type="submit"]:hover {
+        background-color: #0056b3;
+    }
+    #chartContainer {
+        text-align: center;
+    }
+</style>
 </head>
 <body>
 <div class="container">
-    <h2>Professors</h2>
-    <form method="POST">
-        <input type="text" name="name" placeholder="Name" required>
-        <input type="text" name="department" placeholder="Department" required>
-        <textarea name="bio" placeholder="Bio"></textarea>
-        <button type="submit">Add Professor</button>
+    <div class="navbar">
+        <ul>
+            <li><a href="#">Add Professor</a></li>
+            <li><a href="#">Update Professor</a></li>
+        </ul>
+    </div>
+    <h1>IlliniProf</h1>
+    <form id="profForm">
+        <div class="form-group">
+            <label for="department">Department:</label>
+            <input type="text" id="department" name="department" required>
+        </div>
+        <div class="form-group">
+            <label for="courseNumber">Course Number:</label>
+            <input type="text" id="courseNumber" name="courseNumber" required>
+        </div>
+        <div class="form-group">
+            <label for="professor">Professor:</label>
+            <input type="text" id="professor" name="professor" required>
+        </div>
+        <input type="submit" value="Submit">
     </form>
-    <ul>
-    {% for professor in professors %}
-        <li>{{ professor.name }} - {{ professor.department }} <a href="/professor/{{ professor.id }}">View/Edit</a></li>
-    {% endfor %}
-    </ul>
+    <div id="chartContainer">
+        <canvas id="pieChart"></canvas>
+    </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('profForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const department = document.getElementById('department').value;
+        const courseNumber = document.getElementById('courseNumber').value;
+        const professor = document.getElementById('professor').value;
+        fetchDataAndGenerateChart(department, courseNumber, professor);
+    });
+
+    function fetchDataAndGenerateChart(department, courseNumber, professor) {
+        // Mock data for demonstration
+        const data = {
+            avgGPA: 3.8,
+            wouldTakeAgain: 85,
+            rating: 4.7
+        };
+        generateChart(data);
+    }
+
+    function generateChart(data) {
+        const ctx = document.getElementById('pieChart').getContext('2d');
+        const chartData = {
+            labels: ['Average GPA', 'Would Take Again', 'Rating'],
+            datasets: [{
+                data: [data.avgGPA, data.wouldTakeAgain, data.rating],
+                backgroundColor: ['#007bff', '#28a745', '#ffc107'],
+                hoverBackgroundColor: ['#0056b3', '#218838', '#e0a800']
+            }]
+        };
+        new Chart(ctx, {
+            type: 'pie',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+});
+</script>
 </body>
 </html>
