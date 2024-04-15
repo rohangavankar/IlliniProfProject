@@ -1,0 +1,24 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IlliniProf</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <h2>Professors</h2>
+    <form method="POST">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="text" name="department" placeholder="Department" required>
+        <textarea name="bio" placeholder="Bio"></textarea>
+        <button type="submit">Add Professor</button>
+    </form>
+    <ul>
+    {% for professor in professors %}
+        <li>{{ professor.name }} - {{ professor.department }} <a href="/professor/{{ professor.id }}">View/Edit</a></li>
+    {% endfor %}
+    </ul>
+</div>
+</body>
+</html>

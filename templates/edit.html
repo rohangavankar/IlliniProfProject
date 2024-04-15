@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Professor</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <h2>Edit Professor: {{ professor.name }}</h2>
+    <form method="POST">
+        <input type="text" name="name" placeholder="Name" value="{{ professor.name }}" required>
+        <input type="text" name="department" placeholder="Department" value="{{ professor.department }}" required>
+        <textarea name="bio" placeholder="Bio">{{ professor.bio }}</textarea>
+        <button type="submit">Update</button>
+    </form>
+    <h3>Reviews</h3>
+    <ul>
+    {% for review in professor.reviews %}
+        <li>{{ review.timestamp }} - {{ review.content }}</li>
+    {% endfor %}
+    </ul>
+    <form method="POST" action="/add_review/{{ professor.id }}">
+        <textarea name="content" placeholder="Add a review..." required></textarea>
+        <button type="submit">Post Review</button>
+    </form>
+    <a href="/">Back to List</a>
+</div>
+</body>
+</html>
