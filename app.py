@@ -37,6 +37,28 @@ def index():
     professors = Professor.query.all()
     return render_template('index.html', professors=professors)
 
+
+@app.route('/search', methods=['POST'])
+def search():
+    if request.method == 'POST':
+        data = request.json
+        department = data['department']
+        courseNumber = data['courseNumber']
+        professor = data['professor']
+        print("Received:", department, courseNumber, professor)
+        results = query_database(department, courseNumber, professor)
+
+def query_database(department, courseNumber, professor):
+    # This function should perform a database query based on the parameters
+    # For example, you might have SQLAlchemy models and perform a query like:
+    # results = Professor.query.filter_by(name=professor, department=department).all()
+    # Return a list of dictionaries (or similar structure) that can be JSON serialized
+    return [
+        {"name": professor, "department": department, "course": courseNumber}
+    ]
+
+
+
 @app.route('/professor/<int:id>', methods=['GET', 'POST'])
 def professor(id):
     professor = Professor.query.get_or_404(id)
@@ -55,6 +77,35 @@ def delete_review(id):
     db.session.delete(review)
     db.session.commit()
     return redirect(url_for('professor', id=professor_id))
+
+
+@app.route('/add_professor', methods=['GET', 'POST'])
+def add_professor():
+    if request.method == 'POST':
+        name = request.form['name']
+        department = request.form['department']
+        bio = request.form.get('bio', '')
+        new_professor = Professor(name=name, department=department, bio=bio)
+        db.session.add(new_professor)
+        db.session.commit()
+        return redirect(url_for('index'))
+    return render_template('add_professor.html')
+
+@app.route('/edit_professor/<int:id>', methods=['GET', 'POST'])
+def edit_professor(id):
+    professor = Professor.query.get_or_404(id)
+    if request.method == 'POST':
+        content = request.form['content']
+        review = Review(content=content, professor_id=id)
+        db.session.add(review)
+        db.session.commit()
+        return redirect(url_for('edit_professor', id=id))
+    return render_template('edit_professor.html', professor=professor)
+
+@app.route('/professors')
+def professors():
+    professors = Professor.query.all()  # Retrieve all professors from the database
+    return render_template('professors.html', professors=professors)
 
 if __name__ == '__main__':
     app.run(debug=True)

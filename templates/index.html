@@ -80,11 +80,15 @@
 </head>
 <body>
 <div class="container">
-    <div class="navbar">
-        <ul>
-            <li><a href="#">Add Professor</a></li>
-            <li><a href="#">Update Professor</a></li>
-        </ul>
+    <div class="container">
+        <div class="navbar">
+            <ul>
+                <li><a href="{{ url_for('index') }}">Home</a></li>
+                <li><a href="{{ url_for('add_professor') }}">Add Professor</a></li>
+                <li><a href="{{ url_for('professors') }}">List of Professors</a></li>
+            </ul>
+        </div>
+        <h1>Welcome to IlliniProf</h1>
     </div>
     <h1>IlliniProf</h1>
     <form id="profForm">
@@ -113,6 +117,27 @@ document.addEventListener('DOMContentLoaded', function() {
         const department = document.getElementById('department').value;
         const courseNumber = document.getElementById('courseNumber').value;
         const professor = document.getElementById('professor').value;
+        // Construct the data object you want to send
+        const data = {
+            department: department,
+            courseNumber: courseNumber,
+            professor: professor
+        };
+
+        fetch('/search', {  
+            method: 'POST',  
+            headers: {
+                'Content-Type': 'application/json'  
+            },
+            body: JSON.stringify(data)  
+        })
+        .then(response => response.json()) 
+        .then(data => {
+            console.log('Success:', data);  // Handle the response data
+        })
+        .catch((error) => {
+            console.error('Error:', error);  // Handle errors
+        });
         fetchDataAndGenerateChart(department, courseNumber, professor);
     });
 
