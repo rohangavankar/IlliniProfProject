@@ -1,0 +1,54 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IlliniProf</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <ul>
+                <li><a href="{{ url_for('index') }}">Home</a></li>
+                <li><a href="{{ url_for('add_professor') }}">Add Professor</a></li>
+                <li><a href="{{ url_for('professors') }}">List of Professors</a></li>
+            </ul>
+        </nav>
+        <h1>Welcome to IlliniProf</h1>
+        <div id="coursesContainer"></div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchCourses();
+
+        function fetchCourses() {
+            fetch('/get_courses')
+            .then(response => response.json())
+            .then(data => {
+                displayCourses(data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+
+        function displayCourses(courses) {
+            const container = document.getElementById('coursesContainer');
+            courses.forEach(course => {
+                const div = document.createElement('div');
+                div.className = 'course';
+                div.innerHTML = `
+                    <h2>${course.Title} - ${course.ProfessorName}</h2>
+                    <p>Number of comments: ${course.NumberOfComments}</p>
+                    <p>Average Rating: ${course.AverageRating.toFixed(2)}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+    });
+    </script>
+</body>
+</html>
