@@ -57,15 +57,17 @@
     <div class="navbar">
         <ul>
             <li><a href="{{ url_for('index') }}">Home</a></li>
-            <li><a href="{{ url_for('add_professor') }}">Add Professor</a></li>
         </ul>
     </div>
     <h1>List of Professors</h1>
     <ul>
-        {% for professor in professors %}
+        {% for row in professors %}
         <li>
-            {{ professor.name }} - {{ professor.department }}
-            <a href="{{ url_for('edit_professor', id=professor.id) }}">Edit</a>
+            Course: {{ row.CourseNumber }}<br>
+            Title: {{ row.Title }}<br>
+            Professor Name: {{ row.ProfessorName }}<br>
+            Department: {{ row.Department }}<br>
+            Average Rating: {{ row.AverageRating }}<br>
         </li>
         {% endfor %}
     </ul>

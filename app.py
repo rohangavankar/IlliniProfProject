@@ -199,7 +199,12 @@ def professors():
     professors = []
     with pool.connect() as db_conn:
         professors = db_conn.execute(text('''
-            SELECT * FROM Professors
+            SELECT c.CourseID, c.CourseNumber, c.Title, p.Name AS ProfessorName, p.Department, ROUND(AVG(r.Score), 2) AS AverageRating
+            FROM Courses c
+            JOIN Professors p ON c.ProfessorID = p.ProfessorID
+            JOIN Ratings r ON c.CourseID = r.CourseID
+            GROUP BY c.CourseID, c.Title, p.Name, p.Department
+            ORDER BY AverageRating DESC;
         ''')).fetchall()
     return render_template('professors.html', professors=professors)
 
