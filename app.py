@@ -1,7 +1,9 @@
+import MySQLdb
 from flask import Flask, jsonify, render_template, request, redirect, url_for
 import os
 from google.cloud.sql.connector import Connector
 import sqlalchemy
+from sqlalchemy import text
 
 app = Flask(__name__)
 
@@ -13,6 +15,7 @@ DB_USER = "chef"
 DB_PASS = "food"
 DB_NAME = "omniscient"
 INSTANCE_CONNECTION_NAME = "cs-411-nullpointers:us-central1:testbed"
+
 
 def create_connection_pool():
     connector = Connector()
@@ -33,47 +36,77 @@ def create_connection_pool():
     )
     return pool
 
-# class Professor(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.String(100), nullable=False)
-#     department = db.Column(db.String(100), nullable=False)
-#     bio = db.Column(db.Text, nullable=True)
-#     reviews = db.relationship('Review', backref='professor', lazy=True)
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    pool = create_connection_pool()
+    professors = []
 
-# class Review(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     content = db.Column(db.Text, nullable=False)
-#     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-#     professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
+    if request.method == 'POST':
+        department = request.form.get('department')
+        course_number = request.form.get('course_number')
+        professor_name = request.form.get('professor')
+        
+        query = "SELECT * FROM Professors WHERE 1=1"
+        
+        if department:
+            query += " AND department = %s"
+        if course_number:
+            query += " AND course_number = %s"
+        if professor_name:
+            query += " AND professor_name = %s"
+        with pool.connect() as db_conn:
+            result = db_conn.execute(text(query))
+            professors = result.fetchall()
+        
+        return redirect(url_for('index.html'), professors=professors)
+    
+    return render_template('index.html')
 
 # @app.before_first_request
 # def create_tables():
 #     db.create_all()
 
-from sqlalchemy import text
-
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    pool = create_connection_pool()    
-    if request.method == 'POST':
-        # name = request.form.get('name')
-        # department = request.form.get('department')
-        # bio = request.form.get('bio')
+# @app.route('/', methods=['GET', 'POST'])
+# def index():
+#     conn = get_db_connection()
+#     if request.method == 'POST':
+#         # name = request.form.get('name')
+#         # department = request.form.get('department')
+#         # bio = request.form.get('bio')
         
-        # with pool.connect() as db_conn:
-        #     query = text("INSERT INTO Professors (name, department, bio) VALUES (:name, :department, :bio)")
-        #     db_conn.execute(query, {"name": name, "department": department, "bio": bio})
-        #     db_conn.commit()  
+#         # with pool.connect() as db_conn:
+#         #     query = text("INSERT INTO Professors (name, department, bio) VALUES (:name, :department, :bio)")
+#         #     db_conn.execute(query, {"name": name, "department": department, "bio": bio})
+#         #     db_conn.commit()  
         
-        return redirect(url_for('index'))
+#         return redirect(url_for('index'))
     
-    professors = []
-    with pool.connect() as db_conn:
-        query = text("SELECT * FROM Professors")
-        result = db_conn.execute(query)
-        professors = result.fetchall()
+#     professors = []
+#     try:
+#         with conn.cursor() as cursor:
+#             department = request.form.get('department')
+#             course_number = request.form.get('course_number')
+#             professor = request.form.get('professor')
+        
+#             query = "SELECT * FROM Professors WHERE 1=1"
+        
+#             params = {}
+#             if department:
+#                 query += " AND department = %s"
+#                 params['department'] = department
+#             if course_number:
+#                 query += " AND course_number = %s"
+#                 params['course_number'] = course_number
+#             if professor:
+#                 query += " AND professor = %s"
+#                 params['professor'] = professor
+            
+#             cursor.execute(query, params)
+#             professors = cursor.fetchall()
+#     finally:
+#         conn.close()
     
-    return render_template('index.html', professors=professors)
+#     return render_template('index.html', professors=professors)
 
 
 # @app.route('/search', methods=['POST'])
@@ -95,8 +128,6 @@ def index():
 #     return [
 #         {"name": professor, "department": department, "course": courseNumber}
 #     ]
-
-
 
 # @app.route('/professor/<int:id>', methods=['GET', 'POST'])
 # def professor(id):
@@ -130,16 +161,16 @@ def add_professor():
 #         return redirect(url_for('index'))
     return render_template('add_professor.html')
 
-# @app.route('/edit_professor/<int:id>', methods=['GET', 'POST'])
-# def edit_professor(id):
-#     professor = Professor.query.get_or_404(id)
-#     if request.method == 'POST':
-#         content = request.form['content']
-#         review = Review(content=content, professor_id=id)
-#         db.session.add(review)
-#         db.session.commit()
-#         return redirect(url_for('edit_professor', id=id))
-#     return render_template('edit_professor.html', professor=professor)
+@app.route('/edit_professor/<int:id>', methods=['GET', 'POST'])
+def edit_professor(id):
+    # professor = Professor.query.get_or_404(id)
+    # if request.method == 'POST':
+    #     content = request.form['content']
+    #     review = Review(content=content, professor_id=id)
+    #     db.session.add(review)
+    #     db.session.commit()
+    #     return redirect(url_for('edit_professor', id=id))
+    return render_template('edit_professor.html', professor=[])
 
 
 @app.route('/get_courses')
@@ -164,7 +195,12 @@ def get_courses():
 
 @app.route('/professors')
 def professors():
-#     professors = Professor.query.all()  # Retrieve all professors from the database
+    pool = create_connection_pool()
+    professors = []
+    with pool.connect() as db_conn:
+        professors = db_conn.execute(text('''
+            SELECT * FROM Professors
+        ''')).fetchall()
     return render_template('professors.html', professors=professors)
 
 if __name__ == '__main__':
