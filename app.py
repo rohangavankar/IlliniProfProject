@@ -329,6 +329,7 @@ def search():
 @app.route('/add_rating', methods=['POST'])
 def add_rating():
     if request.method == 'POST':
+        create_trigger()
         pool = create_connection_pool()
         rating = request.form.get('rating')
         course_id = request.form.get('course_id')
@@ -344,6 +345,27 @@ def add_rating():
             print('Rating added successfully')
         
         return redirect(url_for('professor_bio', prof_id=professor_id))
+    
+
+def create_trigger():
+    pool = create_connection_pool()
+    with pool.connect() as db_conn:
+        db_conn.execute(text('''
+            DELIMITER //
+            CREATE OR REPLACE TRIGGER UpdateAverageRating
+            AFTER INSERT OR UPDATE OR DELETE ON Ratings
+            FOR EACH ROW
+            BEGIN
+                DECLARE avg_rating DECIMAL(5, 2);
+                DECLARE course_id INT;
+                SET course_id = COALESCE(NEW.CourseID, OLD.CourseID);
+                SELECT AVG(Score) INTO avg_rating FROM Ratings WHERE CourseID = course_id;
+                UPDATE Courses SET AverageRating = avg_rating WHERE CourseID = course_id;
+            END;
+            //
+            DELIMITER ;
+        '''))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
