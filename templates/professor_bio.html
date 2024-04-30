@@ -13,23 +13,40 @@
         li { margin-bottom: 20px; }
         strong { font-weight: bold; }
         .review-form { margin-top: 30px; }
+        .navbar { background: rgba(255, 255, 255, 0.8); padding: 10px 0; margin-bottom: 20px; border-radius: 8px; }
+        .navbar ul { list-style: none; padding: 0; text-align: center; }
+        .navbar ul li { display: inline; margin-right: 20px; }
+        .navbar ul li a { color: #333; text-decoration: none; font-weight: bold; }
+        .navbar ul li a:hover { text-decoration: underline; }
+      
     </style>
+
+
 </head>
 <body>
 <div class="container">
+    
+    <div class="navbar">
+        <ul>
+            <li><a href="{{ url_for('index') }}">Home</a></li>
+            <li><a href="{{ url_for('add_professor') }}">Add Professor</a></li>
+            <li><a href="{{ url_for('professors') }}">List of Professors</a></li>
+        </ul>
+    </div>
     <h1>{{ professor.ProfessorName }}'s Bio</h1>
     <p><strong>Professor Name:</strong> {{ professor.ProfessorName }}</p>
     <p><strong>Department:</strong> {{ professor.Department }}</p>
     <h2>Courses Taught:</h2>
     {% for course in courses %}
     <h3>{{ course.CourseNumber }} - {{ course.Title }}</h3>
+    <h3>Average Rating for {{ course.CourseNumber }}: {{ ratings_by_course[course.CourseID] if course.CourseID in ratings_by_course else 'No ratings yet' }}</h3>
     <h3>Reviews for {{ course.CourseNumber }}:</h3>
     <ul>
+
         {% for review in reviews_by_course[course.CourseID] %}
         <li>
-            <p><strong>Rating:</strong> {{ review.Score }}</p>
-            <p>{{ review.Comment }}</p>
-            <a href="/delete_review/{{ review.RatingID }}">Delete Review</a>
+            <p>{{ review[1] }}</p>
+            <a href="/delete_review/{{ professor.ProfessorID }}/{{ review[0] }}">Delete Review</a>
         </li>
         {% else %}
         <li>No reviews yet.</li>
@@ -44,7 +61,20 @@
             <button type="submit">Submit Review</button>
         </form>
     </div>
+    <div class="rating-form">
+        <h3>Add a Rating</h3>
+        <form action="/add_rating" method="POST">
+            <input type="hidden" name="professor_id" value="{{ professor.ProfessorID }}">
+            <input type="hidden" name="course_id" value="{{ course.CourseID }}">
+            <label for="rating-{{ course.CourseID }}">Rating (1-5):</label>
+            <input type="number" id="rating-{{ course.CourseID }}" name="rating" min="1" max="5" step="0.1" required>
+            <button type="submit">Submit Rating</button>
+        </form>
+    </div>
+
     {% endfor %}
 </div>
+
+
 </body>
 </html>

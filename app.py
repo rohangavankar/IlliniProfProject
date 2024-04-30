@@ -147,17 +147,30 @@ def index():
 #     db.session.commit()
 #     return redirect(url_for('professor', id=professor_id))
 
-
 @app.route('/add_professor', methods=['GET', 'POST'])
 def add_professor():
-#     if request.method == 'POST':
-#         # name = request.form['name']
-#         # department = request.form['department']
-#         # bio = request.form.get('bio', '')
-#         # new_professor = Professor(name=name, department=department, bio=bio)
-#         # db.session.add(new_professor)
-#         # db.session.commit()
-#         return redirect(url_for('index'))
+    if request.method == 'POST':
+        # Get data from the form
+        name = request.form['name']
+        department = request.form['department']
+        bio = request.form['bio']
+        courses = [course.strip() for course in request.form['courses'].split(',')]
+        insert_professor_query = text('''
+            INSERT INTO Professors (Name, Department, RMP_Link)
+            VALUES (:name, :department, :rmp_link)
+        ''')
+        with create_connection_pool().connect() as db_conn:
+            result= db_conn.execute(insert_professor_query, {'name': name, 'department': department, 'rmp_link': 'none'})
+            print(name, department)
+            professor_id = result.lastrowid
+            print(professor_id)
+            for course in courses:
+                course_number, title = course.split(':')
+                insert_course_query = text('''
+                    INSERT INTO Courses (CourseNumber, ProfessorID, Title)
+                    VALUES (:course_number, :professor_id, :title)
+                ''')
+                db_conn.execute(insert_course_query, {'course_number': course_number, 'professor_id': professor_id, 'title': title})
     return render_template('add_professor.html')
 
 @app.route('/edit_professor/<int:id>', methods=['GET', 'POST'])
@@ -228,16 +241,27 @@ def professor_bio(prof_id):
         reviews_by_course = {}
         for course in courses:
             reviews = db_conn.execute(text('''
-                SELECT r.Score, com.Content AS Comment, r.RatingID
-                FROM Ratings r
-                JOIN Comments com ON r.CourseID = com.CourseID
-                WHERE r.CourseID = :course_id;
+                SELECT CommentID, Content
+                FROM Comments 
+                WHERE CourseID = :course_id;
             '''), {'course_id': course[0]}).fetchall()
             reviews_by_course[course[0]] = reviews
+        print(reviews_by_course)
+        ratings = db_conn.execute(text('''
+            SELECT CourseID, AVG(Score) AS AverageRating
+            FROM Ratings
+            WHERE CourseID IN (SELECT CourseID FROM Courses WHERE ProfessorID = :prof_id)
+            GROUP BY CourseID;
+        '''), {'prof_id': prof_id}).fetchall()
+        print(ratings)
+        ratings_by_course = {rating[0]: rating[1] for rating in ratings}
+
+        print("Ratings by Course:", ratings_by_course)
+
     print(professor_info)
     print(courses)
     print(reviews_by_course)
-    return render_template('professor_bio.html', professor=professor_info, courses=courses, reviews_by_course=reviews_by_course)
+    return render_template('professor_bio.html', professor=professor_info, courses=courses, reviews_by_course=reviews_by_course, ratings_by_course=ratings_by_course)
 
 
 @app.route('/add_review', methods=['POST'])
@@ -255,19 +279,24 @@ def add_review():
                 VALUES (:content, :course_id, :user_id)
             '''), {'content': comment, 'course_id': course_id, 'user_id': user_id})
             db_conn.commit()  
+            result = db_conn.execute(text('SELECT * FROM Comments WHERE CourseID = :course_id'), {'course_id': course_id})
+            inserted_data = result.fetchall()
+            if inserted_data:
+                print('Data present:', inserted_data)
+            else:
+                print('No data found.')
         print('reached')
         return redirect(url_for('professor_bio', prof_id=professor_id))
-@app.route('/delete_review/<int:id>', methods=['GET'])
-def delete_review(id):
+@app.route('/delete_review/<int:prof_id>/<int:id>', methods=['GET'])
+def delete_review(prof_id, id):
     pool = create_connection_pool()
+    print("reac\hed")
     with pool.connect() as db_conn:
         db_conn.execute(text('''
-            DELETE FROM Ratings WHERE RatingID = :rating_id
-        '''), {'rating_id': id})
-        db_conn.execute(text('''
-            DELETE FROM Comments WHERE RatingID = :rating_id
-        '''), {'rating_id': id})
-    return redirect(url_for('professor_bio', id=id))
+            DELETE FROM Comments WHERE CommentID = :comment_id
+        '''), {'comment_id': id})
+        db_conn.commit()
+    return redirect(url_for('professor_bio', prof_id=prof_id))
 
 @app.route('/search', methods=['POST'])
 def search():
@@ -281,11 +310,12 @@ def search():
         FROM Professors p
         JOIN Courses c ON p.ProfessorID = c.ProfessorID
         WHERE p.Name = :professor
+        and c.CourseNumber = :courseNumber
     '''
     params = {}
     # Add conditions based on search criteria
     # Execute the query
-    params = {'professor': professor}
+    params = {'professor': professor, 'courseNumber' : courseNumber}
     with create_connection_pool().connect() as db_conn:
         result = db_conn.execute(text(query), params)
         professor_id = result.fetchone()
@@ -295,6 +325,26 @@ def search():
         return redirect(url_for('professor_bio', prof_id=str(professor_id[0])))
     else:
         return render_template('no_results.html')
+
+
+@app.route('/add_rating', methods=['POST'])
+def add_rating():
+    if request.method == 'POST':
+        pool = create_connection_pool()
+        rating = request.form.get('rating')
+        course_id = request.form.get('course_id')
+        professor_id = request.form.get('professor_id')
+        user_id = 0 
+        print(rating, course_id, professor_id)
+        with pool.connect() as db_conn:
+            db_conn.execute(text('''
+                INSERT INTO Ratings (Score, CourseID, UserID)
+                VALUES (:score, :course_id, :user_id);
+            '''), {'score': rating, 'course_id': course_id, 'user_id': user_id})
+            db_conn.commit()
+            print('Rating added successfully')
+        
+        return redirect(url_for('professor_bio', prof_id=professor_id))
 
 if __name__ == '__main__':
     app.run(debug=True)
