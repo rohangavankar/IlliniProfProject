@@ -1,4 +1,3 @@
-import MySQLdb
 from flask import Flask, jsonify, render_template, request, redirect, url_for
 import os
 from google.cloud.sql.connector import Connector
@@ -192,21 +191,72 @@ def get_courses():
                      "NumberOfComments": num_comments, "AverageRating": avg_rating}
                     for cid, title, pname, num_comments, avg_rating in result])
 
-
 @app.route('/professors')
 def professors():
     pool = create_connection_pool()
     professors = []
     with pool.connect() as db_conn:
         professors = db_conn.execute(text('''
-            SELECT c.CourseID, c.CourseNumber, c.Title, p.Name AS ProfessorName, p.Department, ROUND(AVG(r.Score), 2) AS AverageRating
+            SELECT c.CourseID, c.CourseNumber, c.Title, p.ProfessorID, p.Name AS ProfessorName, p.Department, ROUND(AVG(r.Score), 2) AS AverageRating
             FROM Courses c
             JOIN Professors p ON c.ProfessorID = p.ProfessorID
             JOIN Ratings r ON c.CourseID = r.CourseID
-            GROUP BY c.CourseID, c.Title, p.Name, p.Department
+            GROUP BY c.CourseID, c.Title, p.ProfessorID, p.Name, p.Department
             ORDER BY AverageRating DESC;
         ''')).fetchall()
     return render_template('professors.html', professors=professors)
+
+
+@app.route('/professor/<int:id>')
+@app.route('/professor/<int:id>')
+def professor_bio(id):
+    pool = create_connection_pool()
+    professor_info = {}
+    reviews = []
+
+    with pool.connect() as db_conn:
+        # Fetch professor information
+        professor_info = db_conn.execute(text('''
+            SELECT p.ProfessorID, p.Name AS ProfessorName, p.Department, c.CourseNumber, c.Title
+            FROM Professors p
+            JOIN Courses c ON p.ProfessorID = c.ProfessorID
+            WHERE p.ProfessorID = :prof_id;
+        '''), {'prof_id': id}).fetchone()
+
+        # Fetch reviews for the professor including comments
+        reviews = db_conn.execute(text('''
+            SELECT r.Score, com.Content AS Comment
+            FROM Ratings r
+            JOIN Courses c ON r.CourseID = c.CourseID
+            LEFT JOIN Comments com ON r.CourseID = com.CourseID
+            WHERE c.ProfessorID = :prof_id;
+        '''), {'prof_id': id}).fetchall()
+
+    return render_template('professor_bio.html', professor=professor_info, reviews=reviews)
+
+@app.route('/add_review/<int:id>', methods=['POST'])
+def add_review(id):
+    if request.method == 'POST':
+        pool = create_connection_pool()
+        comment = request.form.get('comment')
+        with pool.connect() as db_conn:
+            db_conn.execute(text('''
+                INSERT INTO Comments (Content, CourseID, UserID)
+                VALUES (:content, :course_id, :user_id)
+            '''), {'content': comment, 'course_id': id, 'user_id': 0}) 
+    return redirect(url_for('professor_bio', id=id))
+
+@app.route('/delete_review/<int:id>', methods=['GET'])
+def delete_review(id):
+    pool = create_connection_pool()
+    with pool.connect() as db_conn:
+        db_conn.execute(text('''
+            DELETE FROM Ratings WHERE RatingID = :rating_id
+        '''), {'rating_id': id})
+        db_conn.execute(text('''
+            DELETE FROM Comments WHERE RatingID = :rating_id
+        '''), {'rating_id': id})
+    return redirect(url_for('professors'))
 
 if __name__ == '__main__':
     app.run(debug=True)

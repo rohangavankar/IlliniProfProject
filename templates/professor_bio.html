@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ professor.ProfessorName }}'s Bio</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; background: linear-gradient(to bottom right, #007bff, #9c27b0); margin: 0; padding: 0; }
+        .container { max-width: 800px; margin: 50px auto; background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        h1, h2 { text-align: center; color: #333; }
+        ul { list-style: none; padding: 0; }
+        li { margin-bottom: 20px; }
+        strong { font-weight: bold; }
+        .review-form { margin-top: 30px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>{{ professor.ProfessorName }}'s Bio</h1>
+    <p><strong>Professor Name:</strong> {{ professor.ProfessorName }}</p>
+    <p><strong>Department:</strong> {{ professor.Department }}</p>
+    <h2>Courses Taught:</h2>
+    <ul>
+        <li>{{ professor.CourseNumber }} - {{ professor.Title }}</li>
+    </ul>
+    <h2>Reviews:</h2>
+    <ul>
+        {% for review in reviews %}
+        <li>
+            <p><strong>Rating:</strong> {{ review.Score }}</p>
+            <p>{{ review.Comment }}</p>
+        </li>
+        {% endfor %}
+    </ul>
+    <!-- Review Form -->
+    <div class="review-form">
+        <h3>Add a Review</h3>
+        <form action="/add_review/{{ professor.ProfessorID }}" method="POST">
+            <textarea name="comment" placeholder="Enter your review here..." required></textarea>
+            <button type="submit">Submit Review</button>
+        </form>
+    </div>
+    <!-- Delete Review Links -->
+    <h3>Delete Review</h3>
+    <ul>
+        {% for review in reviews %}
+        <li>
+            <p>{{ review.Comment }}</p>
+            <a href="/delete_review/{{ review.RatingID }}">Delete Review</a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+</body>
+</html>

@@ -59,18 +59,20 @@
             <li><a href="{{ url_for('index') }}">Home</a></li>
         </ul>
     </div>
-    <h1>List of Professors</h1>
-    <ul>
-        {% for row in professors %}
-        <li>
-            Course: {{ row.CourseNumber }}<br>
-            Title: {{ row.Title }}<br>
-            Professor Name: {{ row.ProfessorName }}<br>
-            Department: {{ row.Department }}<br>
-            Average Rating: {{ row.AverageRating }}<br>
-        </li>
-        {% endfor %}
-    </ul>
+    <div class="container">
+        <h1>List of Professors</h1>
+        <ul>
+            {% for professor in professors %}
+            <li>
+                Course: {{ professor.CourseNumber }}<br>
+                Title: {{ professor.Title }}<br>
+                Professor Name: <a href="{{ url_for('professor_bio', id=professor.ProfessorID) }}">{{ professor.ProfessorName }}</a><br>
+                Department: {{ professor.Department }}<br>
+                Average Rating: {{ professor.AverageRating }}<br>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
 </div>
 </body>
 </html>

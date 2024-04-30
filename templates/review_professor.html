@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Review Professor</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <h2>Review Professor: {{ professor.name }}</h2>
+    <p>Department: {{ professor.department }}</p>
+    <p>Bio: {{ professor.bio }}</p>
+    <h3>Add a Review</h3>
+    <form method="POST">
+        <textarea name="content" placeholder="Enter your review here..." required></textarea>
+        <button type="submit">Submit Review</button>
+    </form>
+    <h3>Reviews</h3>
+    <ul>
+    {% for review in professor.reviews %}
+        <li>{{ review.content }} - <small>posted on {{ review.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></li>
+    {% endfor %}
+    </ul>
+    <a href="/professors">Back to List</a>
+</div>
+</body>
+</html>
