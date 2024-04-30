@@ -15,7 +15,7 @@ DB_PASS = "food"
 DB_NAME = "omniscient"
 INSTANCE_CONNECTION_NAME = "cs-411-nullpointers:us-central1:testbed"
 
-
+ 
 def create_connection_pool():
     connector = Connector()
 
@@ -223,21 +223,18 @@ def professors():
 def professor_bio(prof_id):
     pool = create_connection_pool()
     with pool.connect() as db_conn:
-        # Fetch professor information and all courses they teach
         professor_info = db_conn.execute(text('''
             SELECT ProfessorID, Name AS ProfessorName, Department
             FROM Professors
             WHERE ProfessorID = :prof_id;
         '''), {'prof_id': prof_id}).fetchone()
 
-        # Fetch all courses taught by this professor
         courses = db_conn.execute(text('''
             SELECT CourseID, CourseNumber, Title
             FROM Courses
             WHERE ProfessorID = :prof_id;
         '''), {'prof_id': prof_id}).fetchall()
 
-        # Fetch reviews for all courses taught by this professor
         reviews_by_course = {}
         for course in courses:
             reviews = db_conn.execute(text('''
@@ -258,9 +255,7 @@ def professor_bio(prof_id):
 
         print("Ratings by Course:", ratings_by_course)
 
-    print(professor_info)
-    print(courses)
-    print(reviews_by_course)
+
     return render_template('professor_bio.html', professor=professor_info, courses=courses, reviews_by_course=reviews_by_course, ratings_by_course=ratings_by_course)
 
 
@@ -304,24 +299,28 @@ def search():
     professor = request.form.get('professor')
 
     print(professor)
-    # Create the initial query
     query = '''
         SELECT p.ProfessorID 
         FROM Professors p
         JOIN Courses c ON p.ProfessorID = c.ProfessorID
-        WHERE p.Name = :professor
-        and c.CourseNumber = :courseNumber
     '''
-    params = {}
-    # Add conditions based on search criteria
-    # Execute the query
-    params = {'professor': professor, 'courseNumber' : courseNumber}
+    if professor and courseNumber:
+        query += '''
+            WHERE p.Name = '{}' 
+            AND c.CourseNumber = '{}'
+        '''.format(professor, courseNumber)
+    elif professor:
+        query += '''
+            WHERE p.Name = '{}'
+        '''.format(professor)
+    elif courseNumber:
+        query += '''
+            WHERE c.CourseNumber = '{}'
+        '''.format(courseNumber)
     with create_connection_pool().connect() as db_conn:
-        result = db_conn.execute(text(query), params)
+        result = db_conn.execute(text(query))
         professor_id = result.fetchone()
-    print(professor_id)
     if professor_id:
-        print("reached")
         return redirect(url_for('professor_bio', prof_id=str(professor_id[0])))
     else:
         return render_template('no_results.html')
