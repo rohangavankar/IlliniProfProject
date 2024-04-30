@@ -8,7 +8,7 @@
     <style>
         body { font-family: Arial, sans-serif; background: linear-gradient(to bottom right, #007bff, #9c27b0); margin: 0; padding: 0; }
         .container { max-width: 800px; margin: 50px auto; background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
-        h1, h2 { text-align: center; color: #333; }
+        h1, h2, h3 { text-align: center; color: #333; }
         ul { list-style: none; padding: 0; }
         li { margin-bottom: 20px; }
         strong { font-weight: bold; }
@@ -21,36 +21,30 @@
     <p><strong>Professor Name:</strong> {{ professor.ProfessorName }}</p>
     <p><strong>Department:</strong> {{ professor.Department }}</p>
     <h2>Courses Taught:</h2>
+    {% for course in courses %}
+    <h3>{{ course.CourseNumber }} - {{ course.Title }}</h3>
+    <h3>Reviews for {{ course.CourseNumber }}:</h3>
     <ul>
-        <li>{{ professor.CourseNumber }} - {{ professor.Title }}</li>
-    </ul>
-    <h2>Reviews:</h2>
-    <ul>
+        {% for review in reviews_by_course[course.CourseID] %}
         <li>
-            <p><strong>Rating:</strong> {{ reviews[0].Score }}</p>
-            {% for review in reviews %}
+            <p><strong>Rating:</strong> {{ review.Score }}</p>
             <p>{{ review.Comment }}</p>
-            {% endfor %}
+            <a href="/delete_review/{{ review.RatingID }}">Delete Review</a>
         </li>
+        {% else %}
+        <li>No reviews yet.</li>
+        {% endfor %}
     </ul>
-    <!-- Review Form -->
     <div class="review-form">
         <h3>Add a Review</h3>
-        <form action="/add_review/{{ professor.ProfessorID }}" method="POST">
+        <form action="/add_review" method="POST">
+            <input type="hidden" name="professor_id" value="{{ professor.ProfessorID }}">
+            <input type="hidden" name="course_id" value="{{ course.CourseID }}">
             <textarea name="comment" placeholder="Enter your review here..." required></textarea>
             <button type="submit">Submit Review</button>
         </form>
     </div>
-    <!-- Delete Review Links -->
-    <h3>Delete Review</h3>
-    <ul>
-        {% for review in reviews %}
-        <li>
-            <p>{{ review.Comment }}</p>
-            <a href="/delete_review/{{ review.RatingID }}">Delete Review</a>
-        </li>
-        {% endfor %}
-    </ul>
+    {% endfor %}
 </div>
 </body>
 </html>

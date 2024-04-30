@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IlliniProf</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
     body { font-family: Arial, sans-serif; background: linear-gradient(to bottom right, #007bff, #9c27b0); margin: 0; padding: 0; }
     .container { max-width: 800px; margin: 50px auto; background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
@@ -32,8 +31,7 @@
         </ul>
     </div>
     <h1>IlliniProf</h1>
-    <form id="profForm">
-        
+    <form id="profForm" method="POST" action="/search">
         <div class="form-group">
             <label for="courseNumber">Course Number:</label>
             <input type="text" id="courseNumber" name="courseNumber">
@@ -44,11 +42,10 @@
         </div>
         <input type="submit" value="Submit">
     </form>
-    <div id="chartContainer">
-        <canvas id="pieChart"></canvas>
-    </div>
+   
 </div>
 <script>
+/*
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('profForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -69,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error:', error);
         });
     });
-   /*function generateChart(data) {
+   function generateChart(data) {
         const ctx = document.getElementById('pieChart').getContext('2d');
         new Chart(ctx, {
             type: 'pie',
@@ -83,8 +80,10 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
-    }*/
+    }
+
 });
+*/
 </script>
 </body>
 </html>

@@ -206,46 +206,57 @@ def professors():
         ''')).fetchall()
     return render_template('professors.html', professors=professors)
 
-
-@app.route('/professor/<int:id>',  methods=['GET'])
-def professor_bio(id):
+@app.route('/professor/<int:prof_id>', methods=['GET'])
+def professor_bio(prof_id):
     pool = create_connection_pool()
-    professor_info = {}
-    reviews = []
-    print("hi")
-
     with pool.connect() as db_conn:
-        # Fetch professor information
+        # Fetch professor information and all courses they teach
         professor_info = db_conn.execute(text('''
-            SELECT p.ProfessorID, p.Name AS ProfessorName, p.Department, c.CourseNumber, c.Title
-            FROM Professors p
-            JOIN Courses c ON p.ProfessorID = c.ProfessorID
-            WHERE p.ProfessorID = :prof_id;
-        '''), {'prof_id': id}).fetchone()
+            SELECT ProfessorID, Name AS ProfessorName, Department
+            FROM Professors
+            WHERE ProfessorID = :prof_id;
+        '''), {'prof_id': prof_id}).fetchone()
 
-        # Fetch reviews for the professor including comments
-        reviews = db_conn.execute(text('''
-            SELECT r.Score, com.Content AS Comment
-            FROM Ratings r
-            JOIN Courses c ON r.CourseID = c.CourseID
-            LEFT JOIN Comments com ON r.CourseID = com.CourseID
-            WHERE c.ProfessorID = :prof_id;
-        '''), {'prof_id': id}).fetchall()
-    print("id found")
-    return render_template('professor_bio.html', professor=professor_info, reviews=reviews)
+        # Fetch all courses taught by this professor
+        courses = db_conn.execute(text('''
+            SELECT CourseID, CourseNumber, Title
+            FROM Courses
+            WHERE ProfessorID = :prof_id;
+        '''), {'prof_id': prof_id}).fetchall()
 
-@app.route('/add_review/<int:id>', methods=['POST'])
-def add_review(id):
+        # Fetch reviews for all courses taught by this professor
+        reviews_by_course = {}
+        for course in courses:
+            reviews = db_conn.execute(text('''
+                SELECT r.Score, com.Content AS Comment, r.RatingID
+                FROM Ratings r
+                JOIN Comments com ON r.CourseID = com.CourseID
+                WHERE r.CourseID = :course_id;
+            '''), {'course_id': course[0]}).fetchall()
+            reviews_by_course[course[0]] = reviews
+    print(professor_info)
+    print(courses)
+    print(reviews_by_course)
+    return render_template('professor_bio.html', professor=professor_info, courses=courses, reviews_by_course=reviews_by_course)
+
+
+@app.route('/add_review', methods=['POST'])
+def add_review():
     if request.method == 'POST':
         pool = create_connection_pool()
         comment = request.form.get('comment')
+        course_id = request.form.get('course_id')
+        professor_id = request.form.get('professor_id')
+        print(comment, course_id, professor_id)
+        user_id = 0 
         with pool.connect() as db_conn:
             db_conn.execute(text('''
                 INSERT INTO Comments (Content, CourseID, UserID)
                 VALUES (:content, :course_id, :user_id)
-            '''), {'content': comment, 'course_id': id, 'user_id': 0}) 
-    return redirect(url_for('professor_bio', id=id))
-
+            '''), {'content': comment, 'course_id': course_id, 'user_id': user_id})
+            db_conn.commit()  
+        print('reached')
+        return redirect(url_for('professor_bio', prof_id=professor_id))
 @app.route('/delete_review/<int:id>', methods=['GET'])
 def delete_review(id):
     pool = create_connection_pool()
@@ -260,32 +271,30 @@ def delete_review(id):
 
 @app.route('/search', methods=['POST'])
 def search():
-    if request.method == 'POST':
-        # Extract search criteria from the request
-        data = request.get_json()
-        courseNumber = data["courseNumber"]
-        professor = data["professor"]
-        print(professor)
-        # Create the initial query
-        query = '''
-            SELECT p.ProfessorID 
-            FROM Professors p
-            JOIN Courses c ON p.ProfessorID = c.ProfessorID
-            WHERE p.Name = :professor
-        '''
-        params = {}
-        # Add conditions based on search criteria
-        # Execute the query
-        params = {'professor': professor}
-        with create_connection_pool().connect() as db_conn:
-            result = db_conn.execute(text(query), params)
-            professor_id = result.fetchone()
-        print(professor_id)
-        if professor_id:
-            print("reached")
-            return redirect(url_for('professor_bio', id=str(professor_id[0])))
-        else:
-            return render_template('no_results.html')
+    courseNumber = request.form.get('courseNumber')
+    professor = request.form.get('professor')
+
+    print(professor)
+    # Create the initial query
+    query = '''
+        SELECT p.ProfessorID 
+        FROM Professors p
+        JOIN Courses c ON p.ProfessorID = c.ProfessorID
+        WHERE p.Name = :professor
+    '''
+    params = {}
+    # Add conditions based on search criteria
+    # Execute the query
+    params = {'professor': professor}
+    with create_connection_pool().connect() as db_conn:
+        result = db_conn.execute(text(query), params)
+        professor_id = result.fetchone()
+    print(professor_id)
+    if professor_id:
+        print("reached")
+        return redirect(url_for('professor_bio', prof_id=str(professor_id[0])))
+    else:
+        return render_template('no_results.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

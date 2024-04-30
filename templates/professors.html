@@ -66,7 +66,7 @@
             <li>
                 Course: {{ professor.CourseNumber }}<br>
                 Title: {{ professor.Title }}<br>
-                Professor Name: <a href="{{ url_for('professor_bio', id=professor.ProfessorID) }}">{{ professor.ProfessorName }}</a><br>
+                Professor Name: <a href="{{ url_for('professor_bio', prof_id=professor.ProfessorID) }}">{{ professor.ProfessorName }}</a><br>
                 Department: {{ professor.Department }}<br>
                 Average Rating: {{ professor.AverageRating }}<br>
             </li>
