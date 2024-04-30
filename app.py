@@ -207,12 +207,12 @@ def professors():
     return render_template('professors.html', professors=professors)
 
 
-@app.route('/professor/<int:id>')
-@app.route('/professor/<int:id>')
+@app.route('/professor/<int:id>',  methods=['GET'])
 def professor_bio(id):
     pool = create_connection_pool()
     professor_info = {}
     reviews = []
+    print("hi")
 
     with pool.connect() as db_conn:
         # Fetch professor information
@@ -231,7 +231,7 @@ def professor_bio(id):
             LEFT JOIN Comments com ON r.CourseID = com.CourseID
             WHERE c.ProfessorID = :prof_id;
         '''), {'prof_id': id}).fetchall()
-
+    print("id found")
     return render_template('professor_bio.html', professor=professor_info, reviews=reviews)
 
 @app.route('/add_review/<int:id>', methods=['POST'])
@@ -256,7 +256,36 @@ def delete_review(id):
         db_conn.execute(text('''
             DELETE FROM Comments WHERE RatingID = :rating_id
         '''), {'rating_id': id})
-    return redirect(url_for('professors'))
+    return redirect(url_for('professor_bio', id=id))
+
+@app.route('/search', methods=['POST'])
+def search():
+    if request.method == 'POST':
+        # Extract search criteria from the request
+        data = request.get_json()
+        courseNumber = data["courseNumber"]
+        professor = data["professor"]
+        print(professor)
+        # Create the initial query
+        query = '''
+            SELECT p.ProfessorID 
+            FROM Professors p
+            JOIN Courses c ON p.ProfessorID = c.ProfessorID
+            WHERE p.Name = :professor
+        '''
+        params = {}
+        # Add conditions based on search criteria
+        # Execute the query
+        params = {'professor': professor}
+        with create_connection_pool().connect() as db_conn:
+            result = db_conn.execute(text(query), params)
+            professor_id = result.fetchone()
+        print(professor_id)
+        if professor_id:
+            print("reached")
+            return redirect(url_for('professor_bio', id=str(professor_id[0])))
+        else:
+            return render_template('no_results.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

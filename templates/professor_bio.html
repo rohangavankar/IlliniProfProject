@@ -26,12 +26,12 @@
     </ul>
     <h2>Reviews:</h2>
     <ul>
-        {% for review in reviews %}
         <li>
-            <p><strong>Rating:</strong> {{ review.Score }}</p>
+            <p><strong>Rating:</strong> {{ reviews[0].Score }}</p>
+            {% for review in reviews %}
             <p>{{ review.Comment }}</p>
+            {% endfor %}
         </li>
-        {% endfor %}
     </ul>
     <!-- Review Form -->
     <div class="review-form">

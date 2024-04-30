@@ -33,14 +33,7 @@
     </div>
     <h1>IlliniProf</h1>
     <form id="profForm">
-        <div class="form-group">
-            <label for="department">Department:</label>
-            <select id="department" name="department">
-                <option value="CS">Computer Science</option>
-                <option value="ENG">Engineering</option>
-                <option value="MATH">Mathematics</option>
-            </select>
-        </div>
+        
         <div class="form-group">
             <label for="courseNumber">Course Number:</label>
             <input type="text" id="courseNumber" name="courseNumber">
@@ -59,14 +52,13 @@
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('profForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        const department = document.getElementById('department').value;
         const courseNumber = document.getElementById('courseNumber').value;
         const professor = document.getElementById('professor').value;
  
         fetch('/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ department, courseNumber, professor })
+            body: JSON.stringify({ courseNumber, professor})
         })
         .then(response => response.json())
         .then(data => {
@@ -77,8 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error:', error);
         });
     });
-
-    function generateChart(data) {
+   /*function generateChart(data) {
         const ctx = document.getElementById('pieChart').getContext('2d');
         new Chart(ctx, {
             type: 'pie',
@@ -92,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
-    }
+    }*/
 });
 </script>
 </body>
