@@ -156,22 +156,30 @@ def add_professor():
         department = request.form['department']
         bio = request.form['bio']
         courses = [course.strip() for course in request.form['courses'].split(',')]
-        insert_professor_query = text('''
-            INSERT INTO Professors (Name, Department, RMP_Link)
-            VALUES (:name, :department, :rmp_link)
-        ''')
+        print(name, department, courses)
         with create_connection_pool().connect() as db_conn:
-            result= db_conn.execute(insert_professor_query, {'name': name, 'department': department, 'rmp_link': 'none'})
-            print(name, department)
-            professor_id = result.lastrowid
-            print(professor_id)
-            for course in courses:
-                course_number, title = course.split(':')
-                insert_course_query = text('''
-                    INSERT INTO Courses (CourseNumber, ProfessorID, Title)
-                    VALUES (:course_number, :professor_id, :title)
-                ''')
-                db_conn.execute(insert_course_query, {'course_number': course_number, 'professor_id': professor_id, 'title': title})
+            try:
+                # Start a transaction
+                    db_conn.execute(text("START TRANSACTION"))
+                    insert_professor_query = text('''
+                        INSERT INTO Professors (Name, Department, RMP_Link)
+                        VALUES (:name, :department, :rmp_link)
+                    ''')
+                    result = db_conn.execute(insert_professor_query, {'name': name, 'department': department, 'rmp_link': 'none'})
+                    professor_id = result.lastrowid
+                    for course in courses:
+                        course_number, title = course.split(':')
+                        insert_course_query = text('''
+                            INSERT INTO Courses (CourseNumber, ProfessorID, Title)
+                            VALUES (:course_number, :professor_id, :title)
+                        ''')
+                        db_conn.execute(insert_course_query, {'course_number': course_number, 'professor_id': professor_id, 'title': title})
+                    db_conn.execute(text("COMMIT"))
+                    return redirect(url_for('add_professor'))
+            except Exception as e:
+                db_conn.execute(text("ROLLBACK"))
+                print("Error:", e)
+                return render_template('error.html', message="An error occurred while adding professor.")
     return render_template('add_professor.html')
 
 @app.route('/edit_professor/<int:id>', methods=['GET', 'POST'])
@@ -303,6 +311,10 @@ def add_review():
 @app.route('/delete_review/<int:prof_id>/<int:id>', methods=['GET'])
 def delete_review(prof_id, id):
     pool = create_connection_pool()
+<<<<<<< HEAD
+=======
+    print("reached")
+>>>>>>> 72579ad786f487d79f97828c3ffbc8efe69af108
     with pool.connect() as db_conn:
         db_conn.execute(text('''
             DELETE FROM Comments WHERE CommentID = :comment_id
@@ -373,6 +385,7 @@ def create_trigger():
     pool = create_connection_pool()
 
     with pool.connect() as db_conn:
+<<<<<<< HEAD
         db_conn.execute(text('''ALTER TABLE Ratings
 ADD COLUMN AverageRating DECIMAL(5, 2) DEFAULT 0;'''))
         db_conn.commit()
@@ -380,6 +393,11 @@ ADD COLUMN AverageRating DECIMAL(5, 2) DEFAULT 0;'''))
         db_conn.execute(text('''
             CREATE TRIGGER InsertAverageRating
             AFTER INSERT ON Ratings
+=======
+        db_conn.execute(text('''DROP TRIGGER IF EXISTS UpdateAverageRating;
+            CREATE TRIGGER UpdateAverageRating
+            AFTER INSERT OR UPDATE OR DELETE ON Ratings
+>>>>>>> 72579ad786f487d79f97828c3ffbc8efe69af108
             FOR EACH ROW
             BEGIN
                 DECLARE avg_rating DECIMAL(5, 2);
@@ -414,6 +432,10 @@ ADD COLUMN AverageRating DECIMAL(5, 2) DEFAULT 0;'''))
                 SELECT AVG(Score) INTO avg_rating FROM Ratings WHERE CourseID = course_id;
                 UPDATE Courses SET AverageRating = avg_rating WHERE CourseID = course_id;
             END;
+<<<<<<< HEAD
+=======
+
+>>>>>>> 72579ad786f487d79f97828c3ffbc8efe69af108
         '''))
 
 
