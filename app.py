@@ -529,7 +529,7 @@ def create_stored_procedure_popular_courses():
                 JOIN Courses c ON p.ProfessorID = c.ProfessorID
                 JOIN Ratings r ON c.CourseID = r.CourseID
                 GROUP BY p.Department
-                HAVING COUNT(r.RatingID) > 50
+                HAVING COUNT(r.RatingID) > 5
                 ORDER BY AverageRating DESC;
             
             CREATE TEMPORARY TABLE MostComments AS
