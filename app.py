@@ -3,6 +3,7 @@ import os
 from google.cloud.sql.connector import Connector
 import sqlalchemy
 from sqlalchemy import text
+import jinja2
 
 app = Flask(__name__)
 
@@ -315,9 +316,8 @@ def search():
     courseNumber = request.form.get('courseNumber')
     professor = request.form.get('professor')
 
-    print(professor)
     query = '''
-        SELECT p.ProfessorID 
+        SELECT DISTINCT p.ProfessorID, p.Name as ProfessorName
         FROM Professors p
         JOIN Courses c ON p.ProfessorID = c.ProfessorID
     '''
@@ -336,12 +336,18 @@ def search():
         '''.format(courseNumber)
     with create_connection_pool().connect() as db_conn:
         result = db_conn.execute(text(query))
-        professor_id = result.fetchone()
-    if professor_id:
-        return redirect(url_for('professor_bio', prof_id=str(professor_id[0])))
+        professors = result.fetchall()
+
+    if len(professors) > 1:
+        professor_ids = [row[0] for row in professors]
+        professor_names = [row[1] for row in professors]
+        # Zip the lists
+        professor_data = zip(professor_ids, professor_names)
+        return render_template('professor_ids.html', professor_data=professor_data)
+    elif len(professors) == 1:
+        return redirect(url_for('professor_bio', prof_id=str(professors[0][0])))
     else:
         return render_template('no_results.html')
-
 
 @app.route('/add_rating', methods=['POST'])
 def add_rating():
