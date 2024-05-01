@@ -507,6 +507,44 @@ def professor_detail(professor_id):
 def create_stored_procedure_popular_courses():
     pool = create_connection_pool()
     with pool.connect() as db_conn:
+        db_conn.execute(text('''DROP PROCEDURE IF EXISTS GetInsightfulDepartments;'''))
+        db_conn.execute(text("""
+        DROP PROCEDURE IF EXISTS GetInsightfulDepartments;
+
+        CREATE PROCEDURE GetInsightfulDepartments()
+        BEGIN
+            CREATE TEMPORARY TABLE HighRatings AS
+                SELECT p.Department, AVG(r.Score) AS AverageRating
+                FROM Professors p
+                JOIN Courses c ON p.ProfessorID = c.ProfessorID
+                JOIN Ratings r ON c.CourseID = r.CourseID
+                GROUP BY p.Department
+                HAVING COUNT(r.RatingID) > 50
+                ORDER BY AverageRating DESC;
+            
+            CREATE TEMPORARY TABLE MostComments AS
+                SELECT p.Department, COUNT(com.CommentID) AS TotalComments
+                FROM Professors p
+                JOIN Courses c ON p.ProfessorID = c.ProfessorID
+                JOIN Comments com ON c.CourseID = com.CourseID
+                GROUP BY p.Department
+                ORDER BY TotalComments DESC;
+            
+            SELECT 
+                hr.Department,
+                hr.AverageRating,
+                mc.TotalComments
+            FROM HighRatings hr
+            JOIN MostComments mc ON hr.Department = mc.Department
+            ORDER BY hr.AverageRating DESC, mc.TotalComments DESC;
+
+            DROP TABLE HighRatings;
+            DROP TABLE MostComments;
+        END;"""))
+        
+def create_procedure_highly_recommended():
+    pool = create_connection_pool()
+    with pool.connect() as db_conn:
         db_conn.execute(text('''DROP PROCEDURE IF EXISTS GetPopularCourses;'''))
         db_conn.execute(text("""
             CREATE PROCEDURE GetPopularCourses()
@@ -525,6 +563,7 @@ def create_stored_procedure_popular_courses():
                 ORDER BY NumberOfComments DESC, AverageRating DESC;
             END 
             """))
+        
 @app.route('/popular_courses', methods=['GET'])
 def popular_courses():
     create_stored_procedure_popular_courses()
