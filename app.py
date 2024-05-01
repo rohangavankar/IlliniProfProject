@@ -16,7 +16,6 @@ DB_PASS = "food"
 DB_NAME = "omniscient"
 INSTANCE_CONNECTION_NAME = "cs-411-nullpointers:us-central1:testbed"
 
- 
 def create_connection_pool():
     connector = Connector()
 
@@ -286,8 +285,6 @@ def add_review():
         course_id = request.form.get('course_id', type=int)
         professor_id = request.form.get('professor_id')
 
-        user_id = 0
-
         pool = create_connection_pool()
 
         with pool.connect() as db_conn:
@@ -470,7 +467,27 @@ def create_stored_procedure():
             END IF;
         END
         '''))
-                             
+
+
+
+def get_last_user_id():
+    try:
+        with open('last_user_id.txt', 'r') as file:
+            last_user_id = int(file.read())
+    except FileNotFoundError:
+        last_user_id = 1
+    return last_user_id
+
+def update_last_user_id(user_id):
+    with open('last_user_id.txt', 'w') as file:
+        file.write(str(user_id))
+
+@app.before_first_request
+def initialize():
+    global user_id
+    user_id = get_last_user_id()
+
+    update_last_user_id(user_id + 1)             
 
 if __name__ == '__main__':
     create_stored_procedure()
