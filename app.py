@@ -509,7 +509,7 @@ def professor_detail(professor_id):
 def create_stored_procedure_popular_courses():
     pool = create_connection_pool()
     with pool.connect() as db_conn:
-        db_conn.execute(text('''DROP PROCEDURE IF EXISTS GetPopularCourses;'''))
+        db_conn.execute(text('''DROP PROCEDURE IF EXISTS GetProfessorAverageScore;'''))
         db_conn.execute(text("""
             CREATE PROCEDURE GetPopularCourses()
             BEGIN
@@ -532,7 +532,6 @@ def popular_courses():
     create_stored_procedure_popular_courses()
     pool = create_connection_pool()
     with pool.connect() as conn:
-        # Call the stored procedure
         result = conn.execute(text("CALL GetPopularCourses()"))
         courses = result.fetchall()
     return render_template('popular_courses.html', courses=courses)
