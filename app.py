@@ -62,91 +62,6 @@ def index():
     
     return render_template('index.html')
 
-# @app.before_first_request
-# def create_tables():
-#     db.create_all()
-
-# @app.route('/', methods=['GET', 'POST'])
-# def index():
-#     conn = get_db_connection()
-#     if request.method == 'POST':
-#         # name = request.form.get('name')
-#         # department = request.form.get('department')
-#         # bio = request.form.get('bio')
-        
-#         # with pool.connect() as db_conn:
-#         #     query = text("INSERT INTO Professors (name, department, bio) VALUES (:name, :department, :bio)")
-#         #     db_conn.execute(query, {"name": name, "department": department, "bio": bio})
-#         #     db_conn.commit()  
-        
-#         return redirect(url_for('index'))
-    
-#     professors = []
-#     try:
-#         with conn.cursor() as cursor:
-#             department = request.form.get('department')
-#             course_number = request.form.get('course_number')
-#             professor = request.form.get('professor')
-        
-#             query = "SELECT * FROM Professors WHERE 1=1"
-        
-#             params = {}
-#             if department:
-#                 query += " AND department = %s"
-#                 params['department'] = department
-#             if course_number:
-#                 query += " AND course_number = %s"
-#                 params['course_number'] = course_number
-#             if professor:
-#                 query += " AND professor = %s"
-#                 params['professor'] = professor
-            
-#             cursor.execute(query, params)
-#             professors = cursor.fetchall()
-#     finally:
-#         conn.close()
-    
-#     return render_template('index.html', professors=professors)
-
-
-# @app.route('/search', methods=['POST'])
-# def search():
-#     if request.method == 'POST':
-#         data = request.json
-#         department = data['department']
-#         courseNumber = data['courseNumber']
-#         professor = data['professor']
-#         print("Received:", department, courseNumber, professor)
-#         results = query_database(department, courseNumber, professor)
-
-# def query_database(department, courseNumber, professor):
-#     # This function should perform a database query based on the parameters
-#     # For example, you might have SQLAlchemy models and perform a query like:
-#     # results = Professor.query.filter_by(name=professor, department=department).all()
-#     # Return a list of dictionaries (or similar structure) that can be JSON serialized
-    
-#     return [
-#         {"name": professor, "department": department, "course": courseNumber}
-#     ]
-
-# @app.route('/professor/<int:id>', methods=['GET', 'POST'])
-# def professor(id):
-#     professor = Professor.query.get_or_404(id)
-#     if request.method == 'POST':
-#         content = request.form.get('content')
-#         review = Review(content=content, professor_id=id)
-#         db.session.add(review)
-#         db.session.commit()
-#         return redirect(url_for('professor', id=id))
-#     return render_template('professor.html', professor=professor)
-
-# @app.route('/delete_review/<int:id>')
-# def delete_review(id):
-#     review = Review.query.get_or_404(id)
-#     professor_id = review.professor_id
-#     db.session.delete(review)
-#     db.session.commit()
-#     return redirect(url_for('professor', id=professor_id))
 
 @app.route('/add_professor', methods=['GET', 'POST'])
 def add_professor():
@@ -158,7 +73,6 @@ def add_professor():
         print(name, department, courses)
         with create_connection_pool().connect() as db_conn:
             try:
-                # Start a transaction
                     db_conn.execute(text("START TRANSACTION"))
                     insert_professor_query = text('''
                         INSERT INTO Professors (Name, Department, RMP_Link)
@@ -180,14 +94,6 @@ def add_professor():
                 print("Error:", e)
                 return render_template('error.html', message="An error occurred while adding professor.")
     return render_template('add_professor.html')
-
-@app.route('/edit_professor/<int:professor_id>', methods=['GET'])
-def edit_professor(professor_id):
-    pool = create_connection_pool()
-    with pool.connect() as conn:
-        result = conn.execute(text("SELECT Name, Department FROM Professors WHERE ProfessorID = :id"), {'id': professor_id})
-        professor = result.fetchone()
-    return render_template('edit_professor.html', professor=professor, professor_id=professor_id)
 
 
 
@@ -229,23 +135,19 @@ def professor_bio(prof_id):
     try:
         pool = create_connection_pool()
         with pool.connect() as db_conn:
-            # Start a transaction
             db_conn.execute(text("START TRANSACTION"))
-            # Fetch professor information
             professor_info = db_conn.execute(text('''
                 SELECT ProfessorID, Name AS ProfessorName, Department
                 FROM Professors
                 WHERE ProfessorID = :prof_id;
             '''), {'prof_id': prof_id}).fetchone()
 
-            # Fetch courses associated with the professor
             courses = db_conn.execute(text('''
                 SELECT CourseID, CourseNumber, Title
                 FROM Courses
                 WHERE ProfessorID = :prof_id;
             '''), {'prof_id': prof_id}).fetchall()
 
-            # Fetch reviews for each course
             reviews_by_course = {}
             for course in courses:
                 reviews = db_conn.execute(text('''
@@ -255,7 +157,6 @@ def professor_bio(prof_id):
                 '''), {'course_id': course[0]}).fetchall()
                 reviews_by_course[course[0]] = reviews
 
-            # Fetch ratings for each course
             ratings = db_conn.execute(text('''
                 SELECT CourseID, AVG(Score) AS AverageRating
                 FROM Ratings
@@ -335,16 +236,16 @@ def search():
     '''
     if professor and courseNumber:
         query += '''
-            WHERE p.Name = '{}' 
-            AND c.CourseNumber = '{}'
+            WHERE p.Name LIKE '%{}%' 
+            AND c.CourseNumber LIKE '%{}%' 
         '''.format(professor, courseNumber)
     elif professor:
         query += '''
-            WHERE p.Name = '{}'
+            WHERE p.Name = LIKE '%{}%' 
         '''.format(professor)
     elif courseNumber:
         query += '''
-            WHERE c.CourseNumber = '{}'
+            WHERE c.CourseNumber LIKE  '%{}%' 
         '''.format(courseNumber)
     with create_connection_pool().connect() as db_conn:
         result = db_conn.execute(text(query))
@@ -431,51 +332,51 @@ def create_transaction():
     with pool.connect() as db_conn:
         db_conn.execute(text('''DROP PROCEDURE IF EXISTS AddCourseRatingAndComment;'''))
         db_conn.execute(text('''
-CREATE PROCEDURE AddCourseRatingAndComment(
-    IN p_UserID INT,
-    IN p_CourseID INT,
-    IN p_Score DECIMAL(5, 2),
-    IN p_WouldTakeAgain BOOLEAN,
-    IN p_Comment TEXT)
-BEGIN
-    DECLARE v_alreadyRated INT;
-    SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+        CREATE PROCEDURE AddCourseRatingAndComment(
+            IN p_UserID INT,
+            IN p_CourseID INT,
+            IN p_Score DECIMAL(5, 2),
+            IN p_WouldTakeAgain BOOLEAN,
+            IN p_Comment TEXT)
+        BEGIN
+            DECLARE v_alreadyRated INT;
+            SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 
-    START TRANSACTION;
-    SELECT COUNT(*) INTO v_alreadyRated
-    FROM Ratings
-    JOIN Comments ON Ratings.UserID = Comments.UserID AND Ratings.CourseID = Comments.CourseID 
-    WHERE Ratings.UserID = p_UserID AND Ratings.CourseID = p_CourseID;
+            START TRANSACTION;
+            SELECT COUNT(*) INTO v_alreadyRated
+            FROM Ratings
+            JOIN Comments ON Ratings.UserID = Comments.UserID AND Ratings.CourseID = Comments.CourseID 
+            WHERE Ratings.UserID = p_UserID AND Ratings.CourseID = p_CourseID;
 
-    IF v_alreadyRated = 0 THEN
-        IF CHAR_LENGTH(p_Comment) > 10 THEN
-            INSERT INTO Ratings (Score, WouldTakeAgain, CourseID, UserID)
-            VALUES (p_Score, p_WouldTakeAgain, p_CourseID, p_UserID);
+            IF v_alreadyRated = 0 THEN
+                IF CHAR_LENGTH(p_Comment) > 10 THEN
+                    INSERT INTO Ratings (Score, WouldTakeAgain, CourseID, UserID)
+                    VALUES (p_Score, p_WouldTakeAgain, p_CourseID, p_UserID);
 
-            INSERT INTO Comments (Content, CourseID, UserID)
-            VALUES (p_Comment, p_CourseID, p_UserID);
+                    INSERT INTO Comments (Content, CourseID, UserID)
+                    VALUES (p_Comment, p_CourseID, p_UserID);
 
-            UPDATE Courses
-            SET AverageRating = (
-                SELECT AVG(Score) as AverageScore
-                FROM Ratings
-                WHERE CourseID = p_CourseID
-                GROUP BY CourseID
-            )
-            WHERE CourseID = p_CourseID;
+                    UPDATE Courses
+                    SET AverageRating = (
+                        SELECT AVG(Score) as AverageScore
+                        FROM Ratings
+                        WHERE CourseID = p_CourseID
+                        GROUP BY CourseID
+                    )
+                    WHERE CourseID = p_CourseID;
 
-            COMMIT;
+                    COMMIT;
 
-            SELECT 'Rating and comment added successfully!' AS Result;
-        ELSE
-            ROLLBACK;
-            SELECT 'Comment must be at least 10 characters long.' AS ErrorMessage;
-        END IF;
-    ELSE
-        ROLLBACK;
-        SELECT 'User has already rated this course.' AS ErrorMessage;
-    END IF;
-END
+                    SELECT 'Rating and comment added successfully!' AS Result;
+                ELSE
+                    ROLLBACK;
+                    SELECT 'Comment must be at least 10 characters long.' AS ErrorMessage;
+                END IF;
+            ELSE
+                ROLLBACK;
+                SELECT 'User has already rated this course.' AS ErrorMessage;
+            END IF;
+        END
         '''))
                              
 def create_stored_procedure_avgscore():
@@ -610,6 +511,15 @@ def initialize():
     user_id = get_last_user_id()
 
     update_last_user_id(user_id + 1)         
+
+
+@app.route('/edit_professor/<int:professor_id>', methods=['GET'])
+def edit_professor(professor_id):
+    pool = create_connection_pool()
+    with pool.connect() as conn:
+        result = conn.execute(text("SELECT Name, Department FROM Professors WHERE ProfessorID = :id"), {'id': professor_id})
+        professor = result.fetchone()
+    return render_template('edit_professor.html', professor=professor, professor_id=professor_id)
 
 @app.route('/update_professor/<int:professor_id>', methods=['POST'])
 def update_professor(professor_id):
