@@ -181,16 +181,14 @@ def add_professor():
                 return render_template('error.html', message="An error occurred while adding professor.")
     return render_template('add_professor.html')
 
-@app.route('/edit_professor/<int:id>', methods=['GET', 'POST'])
-def edit_professor(id):
-    # professor = Professor.query.get_or_404(id)
-    # if request.method == 'POST':
-    #     content = request.form['content']
-    #     review = Review(content=content, professor_id=id)
-    #     db.session.add(review)
-    #     db.session.commit()
-    #     return redirect(url_for('edit_professor', id=id))
-    return render_template('edit_professor.html', professor=[])
+@app.route('/edit_professor/<int:professor_id>', methods=['GET'])
+def edit_professor(professor_id):
+    pool = create_connection_pool()
+    with pool.connect() as conn:
+        result = conn.execute(text("SELECT Name, Department FROM Professors WHERE ProfessorID = :id"), {'id': professor_id})
+        professor = result.fetchone()
+    return render_template('edit_professor.html', professor=professor, professor_id=professor_id)
+
 
 
 @app.route('/get_courses')
@@ -612,6 +610,18 @@ def initialize():
     user_id = get_last_user_id()
 
     update_last_user_id(user_id + 1)         
+
+@app.route('/update_professor/<int:professor_id>', methods=['POST'])
+def update_professor(professor_id):
+    name = request.form['name']
+    department = request.form['department']
+    bio = request.form['bio']
+    pool = create_connection_pool()
+    with pool.connect() as conn:
+        conn.execute(text("START TRANSACTION"))
+        conn.execute(text("UPDATE Professors SET Name = :name, Department = :dept WHERE ProfessorID = :id"), {'name': name, 'dept': department, 'id': professor_id})
+        conn.execute(text("COMMIT"))
+    return redirect(url_for('professor_bio', prof_id=professor_id))
 
 
 if __name__ == '__main__':

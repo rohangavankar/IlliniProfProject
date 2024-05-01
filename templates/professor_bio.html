@@ -36,6 +36,7 @@
         </ul>
     </div>
     <h1>{{ professor.ProfessorName }}'s Bio</h1>
+    <a href="{{ url_for('edit_professor', professor_id=professor.ProfessorID) }}" class="btn btn-secondary">Edit Professor</a>
     <a href="{{ url_for('professor_detail', professor_id=professor.ProfessorID) }}" class="btn btn-primary">View Average Scores</a>
     <p><strong>Professor Name:</strong> {{ professor.ProfessorName }}</p>
     <p><strong>Department:</strong> {{ professor.Department }}</p>
