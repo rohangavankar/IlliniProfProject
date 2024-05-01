@@ -335,17 +335,18 @@ def search():
     '''
     if professor and courseNumber:
         query += '''
-            WHERE p.Name = '{}' 
-            AND c.CourseNumber = '{}'
+            WHERE p.Name LIKE '%{}%' 
+            AND c.CourseNumber LIKE '%{}%'
         '''.format(professor, courseNumber)
     elif professor:
         query += '''
-            WHERE p.Name = '{}'
+            WHERE p.Name LIKE '%{}%'
         '''.format(professor)
     elif courseNumber:
         query += '''
-            WHERE c.CourseNumber = '{}'
+            WHERE c.CourseNumber LIKE '%{}%'
         '''.format(courseNumber)
+
     with create_connection_pool().connect() as db_conn:
         result = db_conn.execute(text(query))
         professors = result.fetchall()
@@ -588,7 +589,6 @@ def insightful_courses():
     with pool.connect() as conn:
         result = conn.execute(text("CALL GetInsightfulDepartments()"))
         courses = result.fetchall()
-        print(courses)
     return render_template('insightful_courses.html', courses=courses)
 
 
