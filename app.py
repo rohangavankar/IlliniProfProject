@@ -151,29 +151,34 @@ def index():
 @app.route('/add_professor', methods=['GET', 'POST'])
 def add_professor():
     if request.method == 'POST':
-        # Get data from the form
         name = request.form['name']
         department = request.form['department']
         bio = request.form['bio']
         courses = [course.strip() for course in request.form['courses'].split(',')]
-        insert_professor_query = text('''
-            INSERT INTO Professors (Name, Department, RMP_Link)
-            VALUES (:name, :department, :rmp_link)
-        ''')
+        print(name, department, courses)
         with create_connection_pool().connect() as db_conn:
-            result= db_conn.execute(insert_professor_query, {'name': name, 'department': department, 'rmp_link': 'none'})
-            db_conn.commit()
-            print(name, department)
-            professor_id = result.lastrowid
-            print(professor_id)
-            for course in courses:
-                course_number, title = course.split(':')
-                insert_course_query = text('''
-                    INSERT INTO Courses (CourseNumber, ProfessorID, Title)
-                    VALUES (:course_number, :professor_id, :title)
-                ''')
-                db_conn.execute(insert_course_query, {'course_number': course_number, 'professor_id': professor_id, 'title': title})
-                db_conn.commit()
+            try:
+                # Start a transaction
+                    db_conn.execute(text("START TRANSACTION"))
+                    insert_professor_query = text('''
+                        INSERT INTO Professors (Name, Department, RMP_Link)
+                        VALUES (:name, :department, :rmp_link)
+                    ''')
+                    result = db_conn.execute(insert_professor_query, {'name': name, 'department': department, 'rmp_link': 'none'})
+                    professor_id = result.lastrowid
+                    for course in courses:
+                        course_number, title = course.split(':')
+                        insert_course_query = text('''
+                            INSERT INTO Courses (CourseNumber, ProfessorID, Title)
+                            VALUES (:course_number, :professor_id, :title)
+                        ''')
+                        db_conn.execute(insert_course_query, {'course_number': course_number, 'professor_id': professor_id, 'title': title})
+                    db_conn.execute(text("COMMIT"))
+                    return redirect(url_for('add_professor'))
+            except Exception as e:
+                db_conn.execute(text("ROLLBACK"))
+                print("Error:", e)
+                return render_template('error.html', message="An error occurred while adding professor.")
     return render_template('add_professor.html')
 
 @app.route('/edit_professor/<int:id>', methods=['GET', 'POST'])
@@ -221,46 +226,55 @@ def professors():
             ORDER BY AverageRating DESC;
         ''')).fetchall()
     return render_template('professors.html', professors=professors)
-
 @app.route('/professor/<int:prof_id>', methods=['GET'])
 def professor_bio(prof_id):
-    pool = create_connection_pool()
-    with pool.connect() as db_conn:
-        professor_info = db_conn.execute(text('''
-            SELECT ProfessorID, Name AS ProfessorName, Department
-            FROM Professors
-            WHERE ProfessorID = :prof_id;
-        '''), {'prof_id': prof_id}).fetchone()
+    try:
+        pool = create_connection_pool()
+        with pool.connect() as db_conn:
+            # Start a transaction
+            db_conn.execute(text("START TRANSACTION"))
+            # Fetch professor information
+            professor_info = db_conn.execute(text('''
+                SELECT ProfessorID, Name AS ProfessorName, Department
+                FROM Professors
+                WHERE ProfessorID = :prof_id;
+            '''), {'prof_id': prof_id}).fetchone()
 
-        courses = db_conn.execute(text('''
-            SELECT CourseID, CourseNumber, Title
-            FROM Courses
-            WHERE ProfessorID = :prof_id;
-        '''), {'prof_id': prof_id}).fetchall()
+            # Fetch courses associated with the professor
+            courses = db_conn.execute(text('''
+                SELECT CourseID, CourseNumber, Title
+                FROM Courses
+                WHERE ProfessorID = :prof_id;
+            '''), {'prof_id': prof_id}).fetchall()
 
-        reviews_by_course = {}
-        for course in courses:
-            reviews = db_conn.execute(text('''
-                SELECT CommentID, Content
-                FROM Comments 
-                WHERE CourseID = :course_id;
-            '''), {'course_id': course[0]}).fetchall()
-            reviews_by_course[course[0]] = reviews
-        print(reviews_by_course)
-        ratings = db_conn.execute(text('''
-            SELECT CourseID, AVG(Score) AS AverageRating
-            FROM Ratings
-            WHERE CourseID IN (SELECT CourseID FROM Courses WHERE ProfessorID = :prof_id)
-            GROUP BY CourseID;
-        '''), {'prof_id': prof_id}).fetchall()
-        print(ratings)
-        ratings_by_course = {rating[0]: rating[1] for rating in ratings}
+            # Fetch reviews for each course
+            reviews_by_course = {}
+            for course in courses:
+                reviews = db_conn.execute(text('''
+                    SELECT CommentID, Content
+                    FROM Comments 
+                    WHERE CourseID = :course_id;
+                '''), {'course_id': course[0]}).fetchall()
+                reviews_by_course[course[0]] = reviews
 
-        print("Ratings by Course:", ratings_by_course)
+            # Fetch ratings for each course
+            ratings = db_conn.execute(text('''
+                SELECT CourseID, AVG(Score) AS AverageRating
+                FROM Ratings
+                WHERE CourseID IN (SELECT CourseID FROM Courses WHERE ProfessorID = :prof_id)
+                GROUP BY CourseID;
+            '''), {'prof_id': prof_id}).fetchall()
+            ratings_by_course = {rating[0]: rating[1] for rating in ratings}
 
+            # Commit the transaction
+            db_conn.execute(text("COMMIT"))
 
-    return render_template('professor_bio.html', professor=professor_info, courses=courses, reviews_by_course=reviews_by_course, ratings_by_course=ratings_by_course)
-
+        # Render the template with the fetched data
+        return render_template('professor_bio.html', professor=professor_info, courses=courses, reviews_by_course=reviews_by_course, ratings_by_course=ratings_by_course)
+    except Exception as e:
+        db_conn.execute(text("ROLLBACK"))
+        print("Error:", e)
+        return render_template('error.html', message="An error occurred while fetching professor information.")
 
 
 @app.route('/add_review', methods=['POST'])
@@ -305,12 +319,13 @@ def add_review():
 @app.route('/delete_review/<int:prof_id>/<int:id>', methods=['GET'])
 def delete_review(prof_id, id):
     pool = create_connection_pool()
-    print("reac\hed")
+    print("reached")
     with pool.connect() as db_conn:
+        db_conn.execute(text("START TRANSACTION"))
         db_conn.execute(text('''
             DELETE FROM Comments WHERE CommentID = :comment_id
         '''), {'comment_id': id})
-        db_conn.commit()
+        db_conn.execute(text("COMMIT"))
     return redirect(url_for('professor_bio', prof_id=prof_id))
 
 @app.route('/search', methods=['POST'])
@@ -366,7 +381,7 @@ def add_rating():
                 INSERT INTO Ratings (Score, CourseID, UserID)
                 VALUES (:score, :course_id, :user_id);
             '''), {'score': rating, 'course_id': course_id, 'user_id': user_id})
-            db_conn.commit()
+            db_conn.execute(text("COMMIT"))
             print('Rating added successfully')
         
         return redirect(url_for('professor_bio', prof_id=professor_id))
@@ -375,9 +390,8 @@ def add_rating():
 def create_trigger():
     pool = create_connection_pool()
     with pool.connect() as db_conn:
-        db_conn.execute(text('''
-            DELIMITER //
-            CREATE OR REPLACE TRIGGER UpdateAverageRating
+        db_conn.execute(text('''DROP TRIGGER IF EXISTS UpdateAverageRating;
+            CREATE TRIGGER UpdateAverageRating
             AFTER INSERT OR UPDATE OR DELETE ON Ratings
             FOR EACH ROW
             BEGIN
@@ -387,8 +401,7 @@ def create_trigger():
                 SELECT AVG(Score) INTO avg_rating FROM Ratings WHERE CourseID = course_id;
                 UPDATE Courses SET AverageRating = avg_rating WHERE CourseID = course_id;
             END;
-            //
-            DELIMITER ;
+
         '''))
 
 
