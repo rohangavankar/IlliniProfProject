@@ -259,29 +259,46 @@ def professor_bio(prof_id):
     return render_template('professor_bio.html', professor=professor_info, courses=courses, reviews_by_course=reviews_by_course, ratings_by_course=ratings_by_course)
 
 
+
 @app.route('/add_review', methods=['POST'])
 def add_review():
     if request.method == 'POST':
-        pool = create_connection_pool()
+        score = request.form.get('score', type=float)
+        would_take_again = request.form.get('would_take_again', type=bool)
         comment = request.form.get('comment')
-        course_id = request.form.get('course_id')
+        course_id = request.form.get('course_id', type=int)
         professor_id = request.form.get('professor_id')
-        print(comment, course_id, professor_id)
-        user_id = 0 
+
+        user_id = 0
+
+        pool = create_connection_pool()
+
         with pool.connect() as db_conn:
-            db_conn.execute(text('''
-                INSERT INTO Comments (Content, CourseID, UserID)
-                VALUES (:content, :course_id, :user_id)
-            '''), {'content': comment, 'course_id': course_id, 'user_id': user_id})
-            db_conn.commit()  
-            result = db_conn.execute(text('SELECT * FROM Comments WHERE CourseID = :course_id'), {'course_id': course_id})
-            inserted_data = result.fetchall()
-            if inserted_data:
-                print('Data present:', inserted_data)
-            else:
-                print('No data found.')
-        print('reached')
+            try:
+                result_proxy = db_conn.execute(text('''
+                    CALL AddCourseRatingAndComment(:p_UserID, :p_CourseID, :p_Score, :p_WouldTakeAgain, :p_Comment)
+                '''), {
+                    'p_UserID': user_id, 
+                    'p_CourseID': course_id, 
+                    'p_Score': score, 
+                    'p_WouldTakeAgain': would_take_again, 
+                    'p_Comment': comment
+                })
+                
+                result = result_proxy.fetchall()
+                if result:
+                    print(result[0][0])  
+
+            except Exception as e:
+                db_conn.rollback() 
+                print(str(e))
+
+            finally:
+                db_conn.close()
+
         return redirect(url_for('professor_bio', prof_id=professor_id))
+
+    
 @app.route('/delete_review/<int:prof_id>/<int:id>', methods=['GET'])
 def delete_review(prof_id, id):
     pool = create_connection_pool()
@@ -367,5 +384,47 @@ def create_trigger():
         '''))
 
 
+def create_stored_procedure():
+    pool = create_connection_pool()
+    with pool.connect() as db_conn:
+        db_conn.execute(text('''DROP PROCEDURE IF EXISTS AddCourseRatingAndComment;'''))
+        db_conn.execute(text('''
+        CREATE PROCEDURE AddCourseRatingAndComment(
+            IN p_UserID INT,
+            IN p_CourseID INT,
+            IN p_Score DECIMAL(5, 2),
+            IN p_WouldTakeAgain BOOLEAN,
+            IN p_Comment TEXT)
+        BEGIN
+            DECLARE v_alreadyRated INT;
+            START TRANSACTION;
+            SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+            SELECT COUNT(*) INTO v_alreadyRated FROM Ratings
+            WHERE UserID = p_UserID AND CourseID = p_CourseID;
+            
+            IF v_alreadyRated = 0 THEN
+                IF CHAR_LENGTH(p_Comment) > 10 THEN
+                    INSERT INTO Ratings (Score, WouldTakeAgain, CourseID, UserID)
+                    VALUES (p_Score, p_WouldTakeAgain, p_CourseID, p_UserID);
+                    
+                    INSERT INTO Comments (Content, CourseID, UserID)
+                    VALUES (p_Comment, p_CourseID, p_UserID);
+                    
+                    COMMIT;
+                    
+                    SELECT 'Rating and comment added successfully!' AS Result;
+                ELSE
+                    ROLLBACK;
+                    SELECT 'Comment must be at least 10 characters long.' AS ErrorMessage;
+                END IF;
+            ELSE
+                ROLLBACK;
+                SELECT 'User has already rated this course.' AS ErrorMessage;
+            END IF;
+        END
+        '''))
+                             
+
 if __name__ == '__main__':
+    create_stored_procedure()
     app.run(debug=True)
