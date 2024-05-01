@@ -471,6 +471,71 @@ def create_stored_procedure():
         END
         '''))
                              
+def create_stored_procedure_avgscore():
+    pool = create_connection_pool()
+    with pool.connect() as db_conn:
+        db_conn.execute(text('''DROP PROCEDURE IF EXISTS GetProfessorAverageScore;'''))
+        db_conn.execute(text("""
+            CREATE PROCEDURE GetProfessorAverageScore(IN prof_id INT)
+            BEGIN
+                SELECT 
+                    Pr.Name AS ProfessorName,
+                    Pr.Department,
+                    AVG(OverallCourseScore) AS AvgProfessorScore
+                FROM 
+                    (
+                        SELECT 
+                            C.ProfessorID,
+                            AVG(R.Score) AS OverallCourseScore
+                        FROM Courses C
+                        JOIN Ratings R ON C.CourseID = R.CourseID
+                        WHERE C.ProfessorID = prof_id
+                        GROUP BY C.CourseID
+                    ) AS CourseScores
+                JOIN Professors Pr ON CourseScores.ProfessorID = Pr.ProfessorID
+                WHERE Pr.ProfessorID = prof_id
+                GROUP BY Pr.ProfessorID;
+            END;
+            """))
+@app.route('/professor_detail/<int:professor_id>', methods=['GET'])
+def professor_detail(professor_id):
+    create_stored_procedure_avgscore()
+    pool = create_connection_pool()
+    with pool.connect() as conn:
+        result = conn.execute(text("CALL GetProfessorAverageScore(:prof_id)"), {'prof_id': professor_id})
+        professor_info = result.fetchone()
+    return render_template('professor_details.html', professor=professor_info)
+        
+def create_stored_procedure_popular_courses():
+    pool = create_connection_pool()
+    with pool.connect() as db_conn:
+        db_conn.execute(text('''DROP PROCEDURE IF EXISTS GetPopularCourses;'''))
+        db_conn.execute(text("""
+            CREATE PROCEDURE GetPopularCourses()
+            BEGIN
+                SELECT 
+                    c.CourseID, 
+                    c.Title, 
+                    p.Name AS ProfessorName,
+                    COUNT(DISTINCT com.CommentID) AS NumberOfComments,
+                    COALESCE(AVG(r.Score), 0) AS AverageRating
+                FROM Courses c
+                LEFT JOIN Comments com ON c.CourseID = com.CourseID
+                LEFT JOIN Ratings r ON c.CourseID = r.CourseID
+                JOIN Professors p ON c.ProfessorID = p.ProfessorID
+                GROUP BY c.CourseID, c.Title, p.Name
+                ORDER BY NumberOfComments DESC, AverageRating DESC;
+            END 
+            """))
+@app.route('/popular_courses', methods=['GET'])
+def popular_courses():
+    create_stored_procedure_popular_courses()
+    pool = create_connection_pool()
+    with pool.connect() as conn:
+        # Call the stored procedure
+        result = conn.execute(text("CALL GetPopularCourses()"))
+        courses = result.fetchall()
+    return render_template('popular_courses.html', courses=courses)
 
 if __name__ == '__main__':
     create_stored_procedure()

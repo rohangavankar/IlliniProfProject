@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>List of Professors</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <title>Most Popular Courses</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -63,20 +63,30 @@
 
         </ul>
     </div>
-    <div class="container">
-        <h1>Top Professors</h1>
-        <ul>
-            {% for professor in professors %}
-            <li>
-                Course: {{ professor.CourseNumber }}<br>
-                Title: {{ professor.Title }}<br>
-                Professor Name: <a href="{{ url_for('professor_bio', prof_id=professor.ProfessorID) }}">{{ professor.ProfessorName }}</a><br>
-                Department: {{ professor.Department }}<br>
-                Average Rating: {{ professor.AverageRating }}<br>
-            </li>
+    <h1>Most Popular Courses</h1>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Course Title</th>
+                <th>Professor Name</th>
+                <th>Number of Comments</th>
+                <th>Average Rating</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for course in courses %}
+            <tr>
+                <td>{{ course.Title }}</td>
+                <td>{{ course.ProfessorName }}</td>
+                <td>{{ course.NumberOfComments }}</td>
+                <td>{{ course.AverageRating }}</td>
+            </tr>
             {% endfor %}
-        </ul>
-    </div>
+        </tbody>
+    </table>
 </div>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>

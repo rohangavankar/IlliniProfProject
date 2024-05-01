@@ -31,9 +31,12 @@
             <li><a href="{{ url_for('index') }}">Home</a></li>
             <li><a href="{{ url_for('add_professor') }}">Add Professor</a></li>
             <li><a href="{{ url_for('professors') }}">List of Professors</a></li>
+            <li><a href="{{ url_for('popular_courses') }}">Most Popular Courses</a></li>
+
         </ul>
     </div>
     <h1>{{ professor.ProfessorName }}'s Bio</h1>
+    <a href="{{ url_for('professor_detail', professor_id=professor.ProfessorID) }}" class="btn btn-primary">View Average Scores</a>
     <p><strong>Professor Name:</strong> {{ professor.ProfessorName }}</p>
     <p><strong>Department:</strong> {{ professor.Department }}</p>
     <h2>Courses Taught:</h2>
