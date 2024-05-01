@@ -303,7 +303,6 @@ def add_review():
 @app.route('/delete_review/<int:prof_id>/<int:id>', methods=['GET'])
 def delete_review(prof_id, id):
     pool = create_connection_pool()
-    print("reac\hed")
     with pool.connect() as db_conn:
         db_conn.execute(text('''
             DELETE FROM Comments WHERE CommentID = :comment_id
@@ -372,21 +371,49 @@ def add_rating():
 
 def create_trigger():
     pool = create_connection_pool()
+
     with pool.connect() as db_conn:
+        db_conn.execute(text('''ALTER TABLE Ratings
+ADD COLUMN AverageRating DECIMAL(5, 2) DEFAULT 0;'''))
+        db_conn.commit()
+        db_conn.execute(text('''DROP TRIGGER IF EXISTS InsertAverageRating'''))
         db_conn.execute(text('''
-            DELIMITER //
-            CREATE OR REPLACE TRIGGER UpdateAverageRating
-            AFTER INSERT OR UPDATE OR DELETE ON Ratings
+            CREATE TRIGGER InsertAverageRating
+            AFTER INSERT ON Ratings
             FOR EACH ROW
             BEGIN
                 DECLARE avg_rating DECIMAL(5, 2);
                 DECLARE course_id INT;
-                SET course_id = COALESCE(NEW.CourseID, OLD.CourseID);
+                SET course_id = NEW.CourseID;
                 SELECT AVG(Score) INTO avg_rating FROM Ratings WHERE CourseID = course_id;
                 UPDATE Courses SET AverageRating = avg_rating WHERE CourseID = course_id;
             END;
-            //
-            DELIMITER ;
+        '''))
+        db_conn.execute(text('''DROP TRIGGER IF EXISTS DeleteAverageRating'''))
+        db_conn.execute(text('''
+            CREATE TRIGGER DeleteAverageRating
+            AFTER DELETE ON Ratings
+            FOR EACH ROW
+            BEGIN
+                DECLARE avg_rating DECIMAL(5, 2);
+                DECLARE course_id INT;
+                SET course_id = OLD.CourseID;
+                SELECT AVG(Score) INTO avg_rating FROM Ratings WHERE CourseID = course_id;
+                UPDATE Courses SET AverageRating = avg_rating WHERE CourseID = course_id;
+            END;
+        '''))
+        db_conn.execute(text('''DROP TRIGGER IF EXISTS UpdateAverageRating'''))
+        db_conn.execute(text('''
+            CREATE TRIGGER UpdateAverageRating
+            AFTER UPDATE ON Ratings
+            FOR EACH ROW
+            BEGIN
+                DECLARE avg_rating DECIMAL(5, 2);
+                DECLARE course_id INT;
+                SET course_id = NEW.CourseID;
+                SELECT AVG(Score) INTO avg_rating FROM Ratings WHERE CourseID = course_id;
+                UPDATE Courses SET AverageRating = avg_rating WHERE CourseID = course_id;
+            END;
         '''))
 
 
@@ -433,4 +460,5 @@ def create_stored_procedure():
 
 if __name__ == '__main__':
     create_stored_procedure()
+    create_trigger()
     app.run(debug=True)
