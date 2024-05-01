@@ -162,6 +162,7 @@ def add_professor():
         ''')
         with create_connection_pool().connect() as db_conn:
             result= db_conn.execute(insert_professor_query, {'name': name, 'department': department, 'rmp_link': 'none'})
+            db_conn.commit()
             print(name, department)
             professor_id = result.lastrowid
             print(professor_id)
@@ -172,6 +173,7 @@ def add_professor():
                     VALUES (:course_number, :professor_id, :title)
                 ''')
                 db_conn.execute(insert_course_query, {'course_number': course_number, 'professor_id': professor_id, 'title': title})
+                db_conn.commit()
     return render_template('add_professor.html')
 
 @app.route('/edit_professor/<int:id>', methods=['GET', 'POST'])
