@@ -63,23 +63,22 @@
 
         </ul>
     </div>
-    <h1>Most Insightful Courses (Highly Rated + Most Reviews)</h1>
+    <h1>Most Insightful Depts (Highly Rated + Most Reviews)</h1>
     <table class="table">
         <thead>
             <tr>
-                <th>Course Title</th>
-                <th>Professor Name</th>
-                <th>Number of Comments</th>
+                <th>Department</th>
+                <th>Rating</th>
+                <th>Total Comments</th>
                 <th>Average Rating</th>
             </tr>
         </thead>
         <tbody>
             {% for course in courses %}
             <tr>
-                <td>{{ course.Title }}</td>
-                <td>{{ course.ProfessorName }}</td>
-                <td>{{ course.NumberOfComments }}</td>
+                <td>{{ course.Department }}</td>
                 <td>{{ course.AverageRating }}</td>
+                <td>{{ course.TotalComments }}</td>
             </tr>
             {% endfor %}
         </tbody>
