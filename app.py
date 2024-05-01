@@ -428,45 +428,56 @@ def create_trigger():
             END;
         '''))
 
-def create_stored_procedure():
+def create_transaction():
     pool = create_connection_pool()
     with pool.connect() as db_conn:
         db_conn.execute(text('''DROP PROCEDURE IF EXISTS AddCourseRatingAndComment;'''))
         db_conn.execute(text('''
-        CREATE PROCEDURE AddCourseRatingAndComment(
-            IN p_UserID INT,
-            IN p_CourseID INT,
-            IN p_Score DECIMAL(5, 2),
-            IN p_WouldTakeAgain BOOLEAN,
-            IN p_Comment TEXT)
-        BEGIN
-            DECLARE v_alreadyRated INT;
-            SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+CREATE PROCEDURE AddCourseRatingAndComment(
+    IN p_UserID INT,
+    IN p_CourseID INT,
+    IN p_Score DECIMAL(5, 2),
+    IN p_WouldTakeAgain BOOLEAN,
+    IN p_Comment TEXT)
+BEGIN
+    DECLARE v_alreadyRated INT;
+    SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 
-            START TRANSACTION;
-            SELECT COUNT(*) INTO v_alreadyRated FROM Ratings
-            WHERE UserID = p_UserID AND CourseID = p_CourseID;
-            
-            IF v_alreadyRated = 0 THEN
-                IF CHAR_LENGTH(p_Comment) > 10 THEN
-                    INSERT INTO Ratings (Score, WouldTakeAgain, CourseID, UserID)
-                    VALUES (p_Score, p_WouldTakeAgain, p_CourseID, p_UserID);
-                    
-                    INSERT INTO Comments (Content, CourseID, UserID)
-                    VALUES (p_Comment, p_CourseID, p_UserID);
-                    
-                    COMMIT;
-                    
-                    SELECT 'Rating and comment added successfully!' AS Result;
-                ELSE
-                    ROLLBACK;
-                    SELECT 'Comment must be at least 10 characters long.' AS ErrorMessage;
-                END IF;
-            ELSE
-                ROLLBACK;
-                SELECT 'User has already rated this course.' AS ErrorMessage;
-            END IF;
-        END
+    START TRANSACTION;
+    SELECT COUNT(*) INTO v_alreadyRated
+    FROM Ratings
+    JOIN Comments ON Ratings.UserID = Comments.UserID AND Ratings.CourseID = Comments.CourseID 
+    WHERE Ratings.UserID = p_UserID AND Ratings.CourseID = p_CourseID;
+
+    IF v_alreadyRated = 0 THEN
+        IF CHAR_LENGTH(p_Comment) > 10 THEN
+            INSERT INTO Ratings (Score, WouldTakeAgain, CourseID, UserID)
+            VALUES (p_Score, p_WouldTakeAgain, p_CourseID, p_UserID);
+
+            INSERT INTO Comments (Content, CourseID, UserID)
+            VALUES (p_Comment, p_CourseID, p_UserID);
+
+            UPDATE Courses
+            SET AverageRating = (
+                SELECT AVG(Score) as AverageScore
+                FROM Ratings
+                WHERE CourseID = p_CourseID
+                GROUP BY CourseID
+            )
+            WHERE CourseID = p_CourseID;
+
+            COMMIT;
+
+            SELECT 'Rating and comment added successfully!' AS Result;
+        ELSE
+            ROLLBACK;
+            SELECT 'Comment must be at least 10 characters long.' AS ErrorMessage;
+        END IF;
+    ELSE
+        ROLLBACK;
+        SELECT 'User has already rated this course.' AS ErrorMessage;
+    END IF;
+END
         '''))
                              
 def create_stored_procedure_avgscore():
@@ -536,10 +547,10 @@ def create_stored_procedure_popular_courses():
             FROM HighRatings hr
             JOIN MostComments mc ON hr.Department = mc.Department
             ORDER BY hr.AverageRating DESC, mc.TotalComments DESC;
-
+                             
             DROP TABLE HighRatings;
             DROP TABLE MostComments;
-        END;"""))
+                                     END;"""))
         
 def create_procedure_highly_recommended():
     pool = create_connection_pool()
@@ -579,6 +590,7 @@ def insightful_courses():
     with pool.connect() as conn:
         result = conn.execute(text("CALL GetInsightfulDepartments()"))
         courses = result.fetchall()
+        print(courses)
     return render_template('insightful_courses.html', courses=courses)
 
 
@@ -603,7 +615,8 @@ def initialize():
 
 
 if __name__ == '__main__':
-    create_stored_procedure()
+    create_transaction()
+    create_procedure_highly_recommended()
     create_stored_procedure_popular_courses()
     create_trigger()
     app.run(debug=True)
