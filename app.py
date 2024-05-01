@@ -382,7 +382,6 @@ def add_rating():
             '''.format(rating, course_id, user_id)
             db_conn.execute(text(query))
             db_conn.commit()
-            print('Rating added successfully')
         
         return redirect(url_for('professor_bio', prof_id=professor_id))
     
@@ -444,8 +443,9 @@ def create_stored_procedure():
             IN p_Comment TEXT)
         BEGIN
             DECLARE v_alreadyRated INT;
-            START TRANSACTION;
             SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+            START TRANSACTION;
             SELECT COUNT(*) INTO v_alreadyRated FROM Ratings
             WHERE UserID = p_UserID AND CourseID = p_CourseID;
             
