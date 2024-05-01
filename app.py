@@ -495,6 +495,7 @@ def create_stored_procedure_avgscore():
                 GROUP BY Pr.ProfessorID;
             END;
             """))
+        
 @app.route('/professor_detail/<int:professor_id>', methods=['GET'])
 def professor_detail(professor_id):
     create_stored_procedure_avgscore()
@@ -509,8 +510,6 @@ def create_stored_procedure_popular_courses():
     with pool.connect() as db_conn:
         db_conn.execute(text('''DROP PROCEDURE IF EXISTS GetInsightfulDepartments;'''))
         db_conn.execute(text("""
-        DROP PROCEDURE IF EXISTS GetInsightfulDepartments;
-
         CREATE PROCEDURE GetInsightfulDepartments()
         BEGIN
             CREATE TEMPORARY TABLE HighRatings AS
@@ -573,6 +572,16 @@ def popular_courses():
         courses = result.fetchall()
     return render_template('popular_courses.html', courses=courses)
 
+@app.route('/insightful_courses', methods=['GET'])
+def insightful_courses():
+    create_stored_procedure_popular_courses()
+    pool = create_connection_pool()
+    with pool.connect() as conn:
+        result = conn.execute(text("CALL GetInsightfulDepartments()"))
+        courses = result.fetchall()
+    return render_template('insightful_courses.html', courses=courses)
+
+
 def get_last_user_id():
     try:
         with open('last_user_id.txt', 'r') as file:
@@ -595,5 +604,6 @@ def initialize():
 
 if __name__ == '__main__':
     create_stored_procedure()
+    create_stored_procedure_popular_courses()
     create_trigger()
     app.run(debug=True)
